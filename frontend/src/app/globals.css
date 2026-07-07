@@ -1,26 +1,157 @@
 @import "tailwindcss";
 
+/* Configure Tailwind v4 to trigger dark mode utilities when .dark class is present on html or a parent */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Default Light Mode variables */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafafa;
+  --foreground: #18181b;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Explicit Dark Mode overrides (matches when html element has .dark class) */
+:root.dark {
+  --background: #09090b;
+  --foreground: #f4f4f5;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Infinite Loop Marquee Animations */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-container {
+  display: flex;
+  overflow: hidden;
+  user-select: none;
+  width: 100%;
+}
+
+.marquee-content {
+  display: flex;
+  gap: 1.5rem; /* Gap matching gap-6 in Tailwind */
+  width: max-content;
+  animation: marquee 45s linear infinite;
+}
+
+.marquee-content:hover {
+  animation-play-state: paused;
+}
+
+/* Cards Entrance Slide-Up Animation */
+@keyframes slideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  opacity: 0;
+  animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Hide scrollbar utility class */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Cracker Blast Shake Animation */
+@keyframes blastShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px) rotate(-0.5deg); }
+  40% { transform: translateX(4px) rotate(0.5deg); }
+  60% { transform: translateX(-2px) rotate(-0.2deg); }
+  80% { transform: translateX(2px) rotate(0.2deg); }
+}
+
+.animate-blast-shake {
+  animation: blastShake 0.4s ease-in-out;
+}
+
+/* Floating animation for image frames */
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(0.5deg); }
+}
+
+.animate-float-slow {
+  animation: floatSlow 8s ease-in-out infinite;
+}
+
+/* Fire Flame Glow Animation for Typed Text */
+@keyframes fireGlow {
+  0%, 100% {
+    text-shadow: 0 0 8px rgba(249, 115, 22, 0.6), 0 0 16px rgba(239, 68, 68, 0.4), 0 0 24px rgba(251, 191, 36, 0.2);
+    color: #ff9d00;
+  }
+  50% {
+    text-shadow: 0 0 12px rgba(249, 115, 22, 0.9), 0 0 24px rgba(239, 68, 68, 0.7), 0 0 36px rgba(251, 191, 36, 0.5);
+    color: #ff3c00;
+  }
+}
+
+.animate-text-fire {
+  animation: fireGlow 1.8s ease-in-out infinite;
+  background: linear-gradient(to right, #f59e0b, #ea580c, #dc2626);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Footer Running Spark Fuse Border */
+@keyframes sparkRun {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-spark-border {
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b, #ec4899, #ef4444);
+  background-size: 200% 200%;
+  animation: sparkRun 3s linear infinite;
+}
+
+/* Custom Link Underline Sweep for Footer */
+.footer-link-underline {
+  position: relative;
+}
+.footer-link-underline::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 1.5px;
+  bottom: -2px;
+  left: 0;
+  background: linear-gradient(to right, #f59e0b, #ef4444);
+  transform-origin: bottom right;
+  transition: transform 0.3s ease-in-out;
+}
+.footer-link-underline:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
 }
