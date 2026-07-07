@@ -236,7 +236,7 @@ function EnquiryFormContent() {
                 Enquiry Details
               </h2>
               <p className="text-xs text-zinc-400 dark:text-zinc-500 font-semibold">
-                Fill out the parameters below to connect with our official Sivakasi team.
+                Fill out the parameters below to connect with our official Maharashtra team.
               </p>
             </div>
 
@@ -511,7 +511,7 @@ function EnquiryFormContent() {
                 Factory Address
               </h4>
               <p className="font-semibold text-zinc-800 dark:text-zinc-300">
-                142/3, Sivakasi Main Road, Thiruthangal, Sivakasi, Tamil Nadu - 626130, India.
+                Amlner road.parola SH 48, Bodarde, Maharashtra 425111, India.
               </p>
             </div>
 
@@ -521,10 +521,10 @@ function EnquiryFormContent() {
                 Direct Contact Lines
               </h4>
               <p className="font-semibold text-zinc-800 dark:text-zinc-300">
-                General Inquiry: +91 94431 82054
+                General Hotline: +91 2597 293 116
               </p>
               <p className="font-semibold text-zinc-800 dark:text-zinc-300">
-                Sales & Wholesale: +91 98430 52361
+                Sales & Wholesale: +91 2597 293 116
               </p>
             </div>
 
@@ -547,10 +547,10 @@ function EnquiryFormContent() {
                 Operating Schedule
               </h4>
               <p className="font-semibold text-zinc-800 dark:text-zinc-300">
-                Monday to Saturday: 9:00 AM - 6:00 PM (IST)
+                Open Daily: 9:00 AM - 8:00 PM (IST)
               </p>
               <p className="font-semibold text-zinc-800 dark:text-zinc-300 text-orange-500">
-                Closed on Sundays & National Festivals
+                Monday to Sunday: 9:00 AM - 8:00 PM
               </p>
             </div>
 
@@ -561,7 +561,7 @@ function EnquiryFormContent() {
         <div className="bg-white/80 dark:bg-zinc-900/35 backdrop-blur-md border border-zinc-200/80 dark:border-white/10 rounded-[2.5rem] p-3 shadow-2xl relative overflow-hidden">
           <div className="relative rounded-[1.8rem] overflow-hidden border border-zinc-200/80 dark:border-white/10 h-80">
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3934.3414969247653!2d77.808381!3d9.479679!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3b06cee2ee4dcf7f%3A0x7d6a54cd9c06631b!2sSivakasi%2C%20Tamil%20Nadu!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+              src="https://maps.google.com/maps?q=Amlner%20road.parola%20SH%2048,%20Bodarde,%20Maharashtra%20425111&t=&z=14&ie=UTF8&iwloc=&output=embed"
               width="100%"
               height="100%"
               style={{ border: 0, filter: "grayscale(0.1)" }}
@@ -627,7 +627,7 @@ export default function EnquiryPage() {
             </span>
           </h1>
           <p className="max-w-xl mx-auto text-sm md:text-base text-zinc-300 font-medium leading-relaxed select-none animate-slide-up-fade" style={{ animationDelay: "200ms" }}>
-            Contact our Sivakasi headquarters directly. Whether seeking dealership credentials, retail support, or product info, we are ready to assist.
+            Contact our Maharashtra headquarters directly. Whether seeking dealership credentials, retail support, or product info, we are ready to assist.
           </p>
         </div>
       </section>

@@ -92,7 +92,7 @@ export default function Footer() {
                     <path fillRule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 00.281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 103 9c0 3.492 1.698 5.988 3.655 7.587a15.223 15.223 0 002.573 1.938 5.568 5.568 0 00.462.208zM10 12a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <span className="leading-relaxed">45, Pyrotechnic Industrial Zone, Sivakasi, Tamil Nadu - 626123</span>
+                <span className="leading-relaxed">Amlner road.parola SH 48, Bodarde, Maharashtra 425111, India</span>
               </li>
               <li className="flex items-center gap-3 group text-zinc-400 hover:text-white transition-colors duration-300">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 border border-white/10 group-hover:border-orange-500/30 group-hover:bg-orange-500/10 transition-colors duration-300 flex-shrink-0">
@@ -100,7 +100,7 @@ export default function Footer() {
                     <path fillRule="evenodd" d="M2 3.5A1.5 1.5 0 013.5 2h1.148a1.5 1.5 0 011.465 1.175l.716 3.222a1.5 1.5 0 01-1.004 1.707l-1.9.633a12.045 12.045 0 005.653 5.653l.633-1.9a1.5 1.5 0 011.707-1.004l3.222.716A1.5 1.5 0 0118 13.852V15a1.5 1.5 0 01-1.5 1.5h-1.15a13.5 13.5 0 01-13-13z" clipRule="evenodd" />
                   </svg>
                 </div>
-                <span>+91 98765 43210</span>
+                <span>+91 2597 293 116</span>
               </li>
               <li className="flex items-center gap-3 group text-zinc-400 hover:text-white transition-colors duration-300">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 border border-white/10 group-hover:border-orange-500/30 group-hover:bg-orange-500/10 transition-colors duration-300 flex-shrink-0">
