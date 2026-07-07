@@ -71,17 +71,9 @@ export default function Navbar() {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "About", href: "/about" },
-    { name: "Product", href: "/products", isDropdown: true },
+    { name: "Product", href: "/products" },
     { name: "Gallery", href: "/gallery" },
     { name: "Where to Buy?", href: "/where-to-buy" },
-  ];
-
-  // Placeholder submenu items for Products
-  const productSubmenu = [
-    { name: "Sparklers", href: "/products#sparklers" },
-    { name: "Crackers & Bombs", href: "/products#crackers" },
-    { name: "Rockets", href: "/products#rockets" },
-    { name: "Aerial Multi-Shots", href: "/products#multi-shots" },
   ];
 
   return (
@@ -135,62 +127,6 @@ export default function Navbar() {
             {/* Desktop Navigation Links */}
             <div className="hidden md:flex items-center gap-1 lg:gap-2">
               {navLinks.map((link) => {
-                if (link.isDropdown) {
-                  return (
-                    <div
-                      key={link.name}
-                      className="relative"
-                      onMouseEnter={() => setIsProductDropdownOpen(true)}
-                      onMouseLeave={() => setIsProductDropdownOpen(false)}
-                    >
-                      <button
-                        onClick={() => setIsProductDropdownOpen(!isProductDropdownOpen)}
-                        className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer ${
-                          pathname.startsWith(link.href)
-                            ? "bg-zinc-900/5 dark:bg-white/10 text-zinc-900 dark:text-white font-semibold"
-                            : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-900/5 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
-                        }`}
-                      >
-                        {link.name}
-                        <svg
-                          className={`h-4 w-4 transition-transform duration-200 ${
-                            isProductDropdownOpen ? "rotate-180" : ""
-                          }`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* Dropdown Menu */}
-                      <div
-                        className={`absolute left-0 mt-1 w-52 rounded-2xl border border-white/20 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-2 shadow-xl transition-all duration-200 origin-top-left ${
-                          isProductDropdownOpen
-                            ? "opacity-100 scale-100 translate-y-0"
-                            : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
-                        }`}
-                      >
-                        {productSubmenu.map((subItem) => (
-                          <Link
-                            key={subItem.name}
-                            href={subItem.href}
-                            className="block rounded-xl px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-300 hover:bg-zinc-900/5 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white transition-all duration-150"
-                          >
-                            {subItem.name}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-
                 const isActive = pathname === link.href;
                 return (
                   <Link
@@ -449,52 +385,6 @@ export default function Navbar() {
         >
           <div className="space-y-1 px-3 pt-2 pb-3 border-t border-zinc-100 dark:border-zinc-800/80 mt-2">
             {navLinks.map((link) => {
-              if (link.isDropdown) {
-                return (
-                  <div key={link.name} className="space-y-1">
-                    <button
-                      onClick={() => setIsProductDropdownOpen(!isProductDropdownOpen)}
-                      className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-base font-medium transition-colors ${
-                        pathname.startsWith(link.href)
-                          ? "bg-zinc-900/5 dark:bg-white/10 text-zinc-900 dark:text-white"
-                          : "text-zinc-600 dark:text-zinc-300 hover:bg-zinc-900/5 dark:hover:bg-white/5 hover:text-zinc-900"
-                      }`}
-                    >
-                      {link.name}
-                      <svg
-                        className={`h-4 w-4 transition-transform duration-200 ${
-                          isProductDropdownOpen ? "rotate-180" : ""
-                        }`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </button>
-                    {isProductDropdownOpen && (
-                      <div className="pl-6 space-y-1">
-                        {productSubmenu.map((subItem) => (
-                          <Link
-                            key={subItem.name}
-                            href={subItem.href}
-                            onClick={() => setIsOpen(false)}
-                            className="block rounded-xl px-4 py-2.5 text-sm text-zinc-500 dark:text-zinc-400 hover:bg-zinc-900/5 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-white"
-                          >
-                            {subItem.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
               const isActive = pathname === link.href;
               return (
                 <Link
