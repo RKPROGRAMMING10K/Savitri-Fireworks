@@ -142,9 +142,8 @@ export default function Footer() {
           </div>
           <div className="flex gap-6">
             {[
-              { name: "Terms of Service", href: "/terms" },
-              { name: "Privacy Policy", href: "/privacy" },
-              { name: "PESO Regulations", href: "/licensing" }
+              { name: "Terms of Service", href: "/terms-of-service" },
+              { name: "Privacy Policy", href: "/privacy-policy" },
             ].map((subLink, sIdx) => (
               <Link
                 key={sIdx}

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Footer from "@/components/Footer";
 import FireworksCanvas from "@/components/FireworksCanvas";
 import BreadcrumbCanvas from "@/components/BreadcrumbCanvas";
@@ -10,6 +11,7 @@ interface Product {
   id: string;
   name: string;
   category: string;
+  subcategory: string;
   image: string;
   desc: string;
   details: string;
@@ -21,7 +23,8 @@ const mockProducts: Product[] = [
   {
     id: "p1",
     name: "Sky Shell - 120 Shots",
-    category: "Aerial Fireworks",
+    category: "Elite Series",
+    subcategory: "Cakes",
     image: "https://images.unsplash.com/photo-1536746803623-cef87080bfc8?q=80&w=600&auto=format&fit=crop",
     desc: "High-flying multi-shot shell painting the sky with colorful starburst patterns.",
     details: "This massive 120-shot high-altitude display shell cake fires consecutively in rapid intervals, filling the night sky with brilliant red, green, and blue willow drops. Crafted with zero child labor, it features a dual safety fuse assembly and stable ground baseplate to prevent tipping.",
@@ -32,6 +35,7 @@ const mockProducts: Product[] = [
     id: "p2",
     name: "Peacock Fountain",
     category: "Fountains",
+    subcategory: "Fountains",
     image: "https://images.unsplash.com/photo-1507502707541-f369a3b18502?q=80&w=600&auto=format&fit=crop",
     desc: "Dazzling spray of golden and silver sparks rising to a height of 10 feet.",
     details: "Emits a high-density, low-smoke spray of glowing gold sparks that slowly transitions into a glittering peacock-tail feather shape of green and yellow sparks. Made with eco-friendly chemical binders to reduce smoke by up to 30%.",
@@ -41,7 +45,8 @@ const mockProducts: Product[] = [
   {
     id: "p3",
     name: "Tri-Color Sparklers",
-    category: "Sparklers",
+    category: "Traditional Crackers",
+    subcategory: "Sparklers",
     image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=600&auto=format&fit=crop",
     desc: "Classic hand-held wire sparklers casting red, green, and gold colors.",
     details: "Premium extra-long burning wire sparklers designed specifically for children. They feature cold-spark chemical formulas that emit bright colored lights without producing high thermal heat, making them incredibly safe to hold.",
@@ -51,7 +56,8 @@ const mockProducts: Product[] = [
   {
     id: "p4",
     name: "Whistling Ground Chakra",
-    category: "Chakras",
+    category: "Traditional Crackers",
+    subcategory: "Chakras",
     image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=600&auto=format&fit=crop",
     desc: "Fast circular floor spinner emitting whistling soundscapes and silver sparks.",
     details: "Spinning chakra that spins rapidly on the ground, creating concentric rings of silver sparks and a sharp whistling whistle tone on ascent. Built with double-thickness paper casings to prevent fracturing during spins.",
@@ -62,6 +68,7 @@ const mockProducts: Product[] = [
     id: "p5",
     name: "Diwali Celebration Box",
     category: "Gift Boxes",
+    subcategory: "Gift Boxes",
     image: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=600&auto=format&fit=crop",
     desc: "Premium curated assortment of sparklers, fountains, and ground spinners.",
     details: "The ultimate festive package. Curated with family safety in mind, it contains 25 items including colored sparklers, flower pots, ground chakras, and mild-sound novelty crackers. Enclosed in a humidity-protective gift box.",
@@ -71,7 +78,8 @@ const mockProducts: Product[] = [
   {
     id: "p6",
     name: "Glittering Flower Pot",
-    category: "Flower Pots",
+    category: "Traditional Crackers",
+    subcategory: "Flower Pots",
     image: "https://images.unsplash.com/photo-1531685250784-7569952593d2?q=80&w=600&auto=format&fit=crop",
     desc: "Cone pot emitting eruption showers of colored sparks and crackling pops.",
     details: "A classic cone fountain that shoots sparkling stars up to 8 feet high. The spray begins as solid gold and erupts into multi-colored crackling star points. Made with low-nitrate powder to decrease smoke emissions.",
@@ -81,7 +89,8 @@ const mockProducts: Product[] = [
   {
     id: "p7",
     name: "Golden Willow Rocket",
-    category: "Aerial Fireworks",
+    category: "Aerial Novelties",
+    subcategory: "Rockets",
     image: "https://images.unsplash.com/photo-1498855926480-d98e83099315?q=80&w=600&auto=format&fit=crop",
     desc: "High soaring rocket that whistles on ascent and explodes into stars.",
     details: "High-flying rocket that ascends with a sharp whistling fuse trail and detonates into a golden weeping willow canopy at 150 feet. Equipped with a balanced guide stick to ensure perfectly vertical flight paths.",
@@ -92,6 +101,7 @@ const mockProducts: Product[] = [
     id: "p8",
     name: "Silver Shower Fountain",
     category: "Fountains",
+    subcategory: "Fountains",
     image: "https://images.unsplash.com/photo-1507502707541-f369a3b18502?q=80&w=600&auto=format&fit=crop",
     desc: "Dense shower of silver volcanic sparks shooting up to 8 feet high.",
     details: "Volcanic-style cone pot that creates a dense, bright silver shower of light. Features a long ignition fuse and double-walled thermal packaging to ensure safety during launch.",
@@ -101,7 +111,8 @@ const mockProducts: Product[] = [
   {
     id: "p9",
     name: "Crimson Red Sparklers",
-    category: "Sparklers",
+    category: "Traditional Crackers",
+    subcategory: "Sparklers",
     image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=600&auto=format&fit=crop",
     desc: "Elegant hand-held wire sparklers casting intense ruby red sparks.",
     details: "Hand-held sparklers that burn with an intense crimson red hue. Made using low-ash chemical recipes to prevent hot particles from falling onto hands, ensuring a safe experience for celebrations.",
@@ -111,7 +122,8 @@ const mockProducts: Product[] = [
   {
     id: "p10",
     name: "Spinning Star Wheel",
-    category: "Chakras",
+    category: "Traditional Crackers",
+    subcategory: "Chakras",
     image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=600&auto=format&fit=crop",
     desc: "Concentric rings of bright gold sparks spinning smoothly on flat grounds.",
     details: "Traditional ground spinner wheel. It whirls at high speed, casting gold and yellow sparks in a uniform circle. Features high-grade clay plugs to ensure the card spins flat on concrete.",
@@ -121,7 +133,8 @@ const mockProducts: Product[] = [
   {
     id: "p11",
     name: "Elite Sky Shell Cake - 50 Shots",
-    category: "Aerial Fireworks",
+    category: "Elite Series",
+    subcategory: "Cakes",
     image: "https://images.unsplash.com/photo-1536746803623-cef87080bfc8?q=80&w=600&auto=format&fit=crop",
     desc: "High altitude multi-shot cake throwing crackling chrysanthemums.",
     details: "A premium 50-shot cake throwing high-altitude shells that detonate into crackling chrysanthemum patterns. Equipped with safety feet and a broad base template to guarantee zero ground wobble.",
@@ -131,7 +144,8 @@ const mockProducts: Product[] = [
   {
     id: "p12",
     name: "Golden Peacock Flower Pot",
-    category: "Flower Pots",
+    category: "Traditional Crackers",
+    subcategory: "Flower Pots",
     image: "https://images.unsplash.com/photo-1531685250784-7569952593d2?q=80&w=600&auto=format&fit=crop",
     desc: "Eruption cone fountain casting golden sparks up to 6 feet.",
     details: "Large cone pot. It ignites with a mild crackle, generating a dense cone fountain of bright gold stars. Formulated with charcoal powder to reduce particulate emissions by up to 25%.",
@@ -141,7 +155,8 @@ const mockProducts: Product[] = [
   {
     id: "p13",
     name: "Neon Green Sparklers",
-    category: "Sparklers",
+    category: "Traditional Crackers",
+    subcategory: "Sparklers",
     image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=600&auto=format&fit=crop",
     desc: "Safe hand-held sparklers throwing bright neon green starbursts.",
     details: "Hand-held green sparklers. The cold-spark formula burns slowly with zero ash fallout, making it ideal for festival photos and child-safe celebrations.",
@@ -151,7 +166,8 @@ const mockProducts: Product[] = [
   {
     id: "p14",
     name: "Musical Sky Rocket",
-    category: "Aerial Fireworks",
+    category: "Aerial Novelties",
+    subcategory: "Rockets",
     image: "https://images.unsplash.com/photo-1498855926480-d98e83099315?q=80&w=600&auto=format&fit=crop",
     desc: "Rocket soaring with whistle and detonating with a sharp sound report.",
     details: "Fast rocket that climbs with a loud whistling tail, exploding into silver strobe points at 120 feet. Equipped with a sturdy wooden guide stick to prevent erratic flight patterns.",
@@ -162,6 +178,7 @@ const mockProducts: Product[] = [
     id: "p15",
     name: "Volcanic Ash Fountain",
     category: "Fountains",
+    subcategory: "Fountains",
     image: "https://images.unsplash.com/photo-1507502707541-f369a3b18502?q=80&w=600&auto=format&fit=crop",
     desc: "Cascading sparks rising in volcanic waves of gold and silver.",
     details: "Fountain styling resembling a volcanic vent. It shoots dense gold sparks transitioning to silver crackling points. Built with double-thickness cardboard to ensure steady pressure.",
@@ -171,7 +188,8 @@ const mockProducts: Product[] = [
   {
     id: "p16",
     name: "Whirling Red Chakra",
-    category: "Chakras",
+    category: "Traditional Crackers",
+    subcategory: "Chakras",
     image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=600&auto=format&fit=crop",
     desc: "Rapid spinner releasing concentric red spark circles on ground floors.",
     details: "Rapid ground chakra. Spins on a flat surface, casting rings of ruby red sparks. Formulated using clay plugs and balanced paper wings to prevent tipping.",
@@ -182,6 +200,7 @@ const mockProducts: Product[] = [
     id: "p17",
     name: "Wedding Special Assortment",
     category: "Gift Boxes",
+    subcategory: "Gift Boxes",
     image: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=600&auto=format&fit=crop",
     desc: "Curated premium box containing sparkles, fountains, and high-altitude cakes.",
     details: "Perfect for marriage events. It compiles elite colored sparklers, massive 50-shot sky cakes, golden fountains, and whistling ground chakras into a single humidity-resistant package.",
@@ -191,7 +210,8 @@ const mockProducts: Product[] = [
   {
     id: "p18",
     name: "Crackling Chrysanthemum Pot",
-    category: "Flower Pots",
+    category: "Traditional Crackers",
+    subcategory: "Flower Pots",
     image: "https://images.unsplash.com/photo-1531685250784-7569952593d2?q=80&w=600&auto=format&fit=crop",
     desc: "Cone fountain emitting dense golden crackles up to 7 feet.",
     details: "Classic cone shape. Erupts with a series of loud, crackling gold sparks that replicate chrysanthemums. Built with a broad safety base for stable operations.",
@@ -201,7 +221,8 @@ const mockProducts: Product[] = [
   {
     id: "p19",
     name: "Screaming Strobe Shell - 25 Shots",
-    category: "Aerial Fireworks",
+    category: "Elite Series",
+    subcategory: "Cakes",
     image: "https://images.unsplash.com/photo-1536746803623-cef87080bfc8?q=80&w=600&auto=format&fit=crop",
     desc: "High altitude cake casting silver blinking strobe points.",
     details: "A 25-shot aerial display. Launches silver shells that whistle loudly on climb and burst into blinking strobe patterns. Features strict chemical ratios to lower post-blast smoke.",
@@ -211,7 +232,8 @@ const mockProducts: Product[] = [
   {
     id: "p20",
     name: "Concentric Gold Spinner",
-    category: "Chakras",
+    category: "Traditional Crackers",
+    subcategory: "Chakras",
     image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=600&auto=format&fit=crop",
     desc: "Floor spinner casting gold rings and cracking star points on concrete.",
     details: "Spins with a loud hum, casting gold rings and crackles. Made using a high-density paper frame to ensure complete combustion with zero card residue.",
@@ -221,7 +243,8 @@ const mockProducts: Product[] = [
   {
     id: "p21",
     name: "Mega Comet Shell - 100 Shots",
-    category: "Aerial Fireworks",
+    category: "Elite Series",
+    subcategory: "Cakes",
     image: "https://images.unsplash.com/photo-1536746803623-cef87080bfc8?q=80&w=600&auto=format&fit=crop",
     desc: "High-flying multi-shot comet cake painting the sky in bright yellow stars.",
     details: "A premium 100-shot aerial cake. It throws yellow comet stars that rise to 120 feet in rapid sequence. Features a sturdy timber baseplate to prevent movement.",
@@ -230,18 +253,20 @@ const mockProducts: Product[] = [
   },
   {
     id: "p22",
-    name: "Golden Shower Pot",
-    category: "Flower Pots",
+    name: "Golden Twinkling Stars",
+    category: "Traditional Crackers",
+    subcategory: "Twinkling Stars",
     image: "https://images.unsplash.com/photo-1531685250784-7569952593d2?q=80&w=600&auto=format&fit=crop",
-    desc: "Cone fountain throwing dense golden sparks up to 6 feet.",
-    details: "Classic cone pot. It ignites with a long fuse and throws a dense shower of glowing gold stars. Made using low-nitrate chemicals to ensure a cleaner burn.",
-    tag: "Popular",
-    rating: 4,
+    desc: "Sparkling sticks throwing golden blinking points mimicking starry nights.",
+    details: "Safety firework sticks designed for hand-held fun. They produce rapid strobe blinking flashes of warm gold lights. Crafted with low-heat formulas to protect hands.",
+    tag: "Kid Safe",
+    rating: 5,
   },
   {
     id: "p23",
     name: "Cold Spark Sparklers",
-    category: "Sparklers",
+    category: "Traditional Crackers",
+    subcategory: "Sparklers",
     image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=600&auto=format&fit=crop",
     desc: "Safe hand-held wire sparklers casting gold sparks with zero heat.",
     details: "Hand-held sparklers. The cold-spark technology burns without heat or ash fallout, making it the safest sparkler for children's festivals.",
@@ -250,18 +275,20 @@ const mockProducts: Product[] = [
   },
   {
     id: "p24",
-    name: "Concentric Silver Chakra",
-    category: "Chakras",
-    image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=600&auto=format&fit=crop",
-    desc: "Rapid floor wheel releasing silver spark rings on flat concrete.",
-    details: "Spins rapidly, throwing concentric silver rings. Formulated with high-clay plugs to ensure stability and prevent erratic ground movements.",
-    tag: "Traditional",
+    name: "Mega Sound Ground Cracker",
+    category: "Traditional Crackers",
+    subcategory: "Ground",
+    image: "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?q=80&w=600&auto=format&fit=crop",
+    desc: "Traditional explosive paper wrap firing loud sonic reports on the ground.",
+    details: "A classic sound cracker pack. Features high-purity composition to create sharp, single-blast reports for festive celebration vibes. Plugs are securely sealed with heavy-duty clay.",
+    tag: "Bestseller",
     rating: 4,
   },
   {
     id: "p25",
     name: "Elite Festival Assortment",
     category: "Gift Boxes",
+    subcategory: "Gift Boxes",
     image: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=600&auto=format&fit=crop",
     desc: "Curated premium box containing sparklers, fountains, chakras, and rockets.",
     details: "A premium assortment package. Contains 30 items including colored sparklers, volcanic fountains, ground chakras, and high-altitude rockets. Sealed in a moisture-resistant storage container.",
@@ -270,18 +297,20 @@ const mockProducts: Product[] = [
   },
   {
     id: "p26",
-    name: "Tri-Color Flower Pot",
-    category: "Flower Pots",
+    name: "Silver Twinkling Stars",
+    category: "Traditional Crackers",
+    subcategory: "Twinkling Stars",
     image: "https://images.unsplash.com/photo-1531685250784-7569952593d2?q=80&w=600&auto=format&fit=crop",
-    desc: "Cone fountain emitting red, green, and gold sparks up to 7 feet.",
-    details: "Cone-shaped fountain. Ignites with a series of colored sparks that shift from red to green and gold. Made using a low-nitrate formulation to ensure lower smoke levels.",
+    desc: "Long metal sticks casting bright silver twinkling flashes in the dark.",
+    details: "A pack of 10 twinkling sparkler sticks. Emit brilliant, diamond-white strobe sparks with lower smoke residues, creating beautiful photo backgrounds.",
     tag: "Popular",
     rating: 4,
   },
   {
     id: "p27",
     name: "Screaming Comet Rocket",
-    category: "Aerial Fireworks",
+    category: "Aerial Novelties",
+    subcategory: "Rockets",
     image: "https://images.unsplash.com/photo-1498855926480-d98e83099315?q=80&w=600&auto=format&fit=crop",
     desc: "Rocket soaring with whistle and detonating with a gold willow burst.",
     details: "Soars vertically with a loud whistle, exploding into a golden willow pattern at 130 feet. Equipped with a balanced guide stick to ensure vertical trajectories.",
@@ -290,18 +319,20 @@ const mockProducts: Product[] = [
   },
   {
     id: "p28",
-    name: "Cascade Silver Fountain",
-    category: "Fountains",
-    image: "https://images.unsplash.com/photo-1507502707541-f369a3b18502?q=80&w=600&auto=format&fit=crop",
-    desc: "Dense shower of silver sparks rising to a height of 8 feet.",
-    details: "Cone-shaped fountain throwing silver sparks. Made using clean-burning formulas to reduce post-blast residue and particulate emissions by up to 25%.",
+    name: "Classic Laxmi Bomb",
+    category: "Traditional Crackers",
+    subcategory: "Ground",
+    image: "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?q=80&w=600&auto=format&fit=crop",
+    desc: "Green thread-wrapped explosive cracker producing loud single reports.",
+    details: "The most respected sound cracker in Sivakasi. Packed with safe chemical blends and bound with natural jute thread wraps to ensure consistent fuse combustion heights.",
     tag: "Popular",
     rating: 4,
   },
   {
     id: "p29",
     name: "Electric Blue Sparklers",
-    category: "Sparklers",
+    category: "Traditional Crackers",
+    subcategory: "Sparklers",
     image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=600&auto=format&fit=crop",
     desc: "Hand-held wire sparklers casting intense neon blue sparks.",
     details: "Hand-held sparklers burning with a vivid blue color. The cold-spark recipe ensures safe operation with minimal smoke and zero hot ash fallout.",
@@ -311,7 +342,8 @@ const mockProducts: Product[] = [
   {
     id: "p30",
     name: "Concentric Red Wheel",
-    category: "Chakras",
+    category: "Traditional Crackers",
+    subcategory: "Chakras",
     image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=600&auto=format&fit=crop",
     desc: "Floor wheel spinning rapidly and throwing bright ruby red sparks.",
     details: "Spins with a loud hum, casting rings of red sparks. Formulated using clay plugs and a balanced frame to ensure it stays flat during high-speed rotation.",
@@ -321,7 +353,8 @@ const mockProducts: Product[] = [
   {
     id: "p31",
     name: "Sonic Boom Crackers Cake",
-    category: "Aerial Fireworks",
+    category: "Elite Series",
+    subcategory: "Cakes",
     image: "https://images.unsplash.com/photo-1536746803623-cef87080bfc8?q=80&w=600&auto=format&fit=crop",
     desc: "Multi-shot aerial cake throwing loud crackling star shells consecutively.",
     details: "A 50-shot aerial cake. Throws cracking chrysanthemum shells that explode consecutively at 100 feet. Features safety feet and a broad base plate to ensure zero wobble.",
@@ -330,18 +363,20 @@ const mockProducts: Product[] = [
   },
   {
     id: "p32",
-    name: "Green Leaf Pot",
-    category: "Flower Pots",
+    name: "Multi-Color Pencil Candles",
+    category: "Traditional Crackers",
+    subcategory: "Pencil Candles",
     image: "https://images.unsplash.com/photo-1531685250784-7569952593d2?q=80&w=600&auto=format&fit=crop",
-    desc: "Cone fountain throwing bright neon green sparks up to 6 feet.",
-    details: "Cone fountain throwing green sparks. Made with eco-friendly binders to ensure a clean burn and lower smoke emissions.",
-    tag: "Popular",
+    desc: "Pencil-shaped crackers emitting continuous colored fire lines.",
+    details: "Classic pencil candle crackers. Once lit from the top, they throw a steady colored fire line that shifts colors from red to green and yellow. Zero explosive sound.",
+    tag: "Kid Safe",
     rating: 4,
   },
   {
     id: "p33",
     name: "Kids Specialty Box",
     category: "Gift Boxes",
+    subcategory: "Gift Boxes",
     image: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=600&auto=format&fit=crop",
     desc: "Curated selection of hand-held sparklers, cold fountains, and spinner chakras.",
     details: "Assortment box curated for kids. Contains 20 items including color sparklers, whistling chakras, and soundless fountains. Packaged in a heavy-duty humidity-resistant box.",
@@ -351,7 +386,8 @@ const mockProducts: Product[] = [
   {
     id: "p34",
     name: "High-Altitude Strobe Rocket",
-    category: "Aerial Fireworks",
+    category: "Aerial Novelties",
+    subcategory: "Rockets",
     image: "https://images.unsplash.com/photo-1498855926480-d98e83099315?q=80&w=600&auto=format&fit=crop",
     desc: "Rocket soaring vertically and exploding into blinking silver strobe stars.",
     details: "Soars to 140 feet with a whistling trail, exploding into silver strobes. Equipped with a balanced guide stick to guarantee vertical flight trajectories.",
@@ -362,6 +398,7 @@ const mockProducts: Product[] = [
     id: "p35",
     name: "Cascading Gold Fountain",
     category: "Fountains",
+    subcategory: "Fountains",
     image: "https://images.unsplash.com/photo-1507502707541-f369a3b18502?q=80&w=600&auto=format&fit=crop",
     desc: "Fountain throwing dense golden sparks rising up to 7 feet.",
     details: "Cone-shaped fountain throwing gold sparks. Formulated using charcoal powder to reduce particulate emissions by up to 25% while keeping the sparks bright.",
@@ -370,18 +407,20 @@ const mockProducts: Product[] = [
   },
   {
     id: "p36",
-    name: "Concentric Yellow Chakra",
-    category: "Chakras",
-    image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=600&auto=format&fit=crop",
-    desc: "Ground wheel spinning at high speed and throwing rings of gold sparks.",
-    details: "Ground spinner casting rings of yellow sparks. Made with high-clay plugs to ensure stability and prevent erratic ground movements.",
-    tag: "Traditional",
+    name: "Musical Candle Sparkler",
+    category: "Traditional Crackers",
+    subcategory: "Pencil Candles",
+    image: "https://images.unsplash.com/photo-1531685250784-7569952593d2?q=80&w=600&auto=format&fit=crop",
+    desc: "Glow candles that release sparkling stars while whistling mild musical notes.",
+    details: "A safety pencil candle variation. Fires glittering gold stars and plays a mild musical tone as the fuse progresses. Safe to plant into flower beds.",
+    tag: "Popular",
     rating: 4,
   },
   {
     id: "p37",
     name: "Golden Strobe Shell Cake - 30 Shots",
-    category: "Aerial Fireworks",
+    category: "Elite Series",
+    subcategory: "Cakes",
     image: "https://images.unsplash.com/photo-1536746803623-cef87080bfc8?q=80&w=600&auto=format&fit=crop",
     desc: "Aerial cake throwing gold willow shells with blinking strobe effects.",
     details: "A 30-shot aerial cake. Throws shells that burst into golden willow shapes with blinking strobes. Equipped with safety feet and a broad base plate for stability.",
@@ -390,28 +429,31 @@ const mockProducts: Product[] = [
   },
   {
     id: "p38",
-    name: "Silver Peacock Pot",
-    category: "Flower Pots",
-    image: "https://images.unsplash.com/photo-1531685250784-7569952593d2?q=80&w=600&auto=format&fit=crop",
-    desc: "Cone fountain casting silver sparks up to 6 feet in feather shapes.",
-    details: "Large cone pot. It ignites with a long fuse and throws a dense shower of silver stars in feather shapes. Made with low-nitrate chemicals to ensure a cleaner burn.",
-    tag: "Popular",
-    rating: 4,
+    name: "1000 Wala Garland Crackers",
+    category: "Traditional Crackers",
+    subcategory: "Garland Crackers",
+    image: "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?q=80&w=600&auto=format&fit=crop",
+    desc: "Premium long string garland chain of 1000 crackers firing in sequence.",
+    details: "Heavy garland chain cracker. Ignites a rhythmic sound cascade that runs consecutively for 45 seconds. Constructed with thick paper wrapping to avoid loose casing debris.",
+    tag: "Bestseller",
+    rating: 5,
   },
   {
     id: "p39",
-    name: "Tri-Color Sparkler Tube",
-    category: "Sparklers",
-    image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=600&auto=format&fit=crop",
-    desc: "Long burning wire sparklers throwing red, green, and blue sparks.",
-    details: "Wire sparklers throwing blue, red, and green sparks. The cold-spark recipe ensures safe operation with minimal smoke and zero hot ash fallout.",
-    tag: "Kid Safe",
-    rating: 5,
+    name: "100 Wala Garland Crackers",
+    category: "Traditional Crackers",
+    subcategory: "Garland Crackers",
+    image: "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?q=80&w=600&auto=format&fit=crop",
+    desc: "Medium length chain garland of 100 crackling firecrackers.",
+    details: "A 100-count garland string cracker. Perfect for short celebrations, it fires a crisp set of sequential sounds. Fitted with a secure safety fuse connector.",
+    tag: "Traditional",
+    rating: 4,
   },
   {
     id: "p40",
     name: "Grand Wedding Assortment Box",
     category: "Gift Boxes",
+    subcategory: "Gift Boxes",
     image: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=600&auto=format&fit=crop",
     desc: "Curated premium box containing elite sparklers, fountains, and high-altitude cakes.",
     details: "Premium marriage celebration package. Contains 40 items including colored sparklers, volcanic fountains, ground chakras, and high-altitude rockets. Packaged in a heavy-duty box.",
@@ -546,9 +588,16 @@ function LocalProductCard({ product, onClick }: LocalProductCardProps) {
 
         <div className="space-y-1.5 text-left">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">
-              {product.category}
-            </span>
+            <div className="flex flex-col gap-0.5 text-left">
+              <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest leading-none">
+                {product.category}
+              </span>
+              {product.subcategory && (
+                <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none mt-0.5">
+                  {product.subcategory}
+                </span>
+              )}
+            </div>
             <div className="flex gap-0.5 text-amber-400">
               {Array.from({ length: product.rating }).map((_, i) => (
                 <svg key={i} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
@@ -576,36 +625,103 @@ function LocalProductCard({ product, onClick }: LocalProductCardProps) {
   );
 }
 
-export default function ProductsPage() {
+function ProductsCatalog() {
+  const searchParams = useSearchParams();
+  
   const [activeCategory, setActiveCategory] = useState("All");
+  const [activeSubcategory, setActiveSubcategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const itemsPerPage = 20;
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeCategory, searchQuery]);
-
   const categories = [
     "All",
-    "Aerial Fireworks",
+    "Traditional Crackers",
+    "Elite Series",
     "Fountains",
-    "Sparklers",
-    "Chakras",
-    "Flower Pots",
+    "Aerial Novelties",
     "Gift Boxes",
   ];
 
+  const subcategoriesList = [
+    "All",
+    "Ground",
+    "Chakras",
+    "Sparklers",
+    "Twinkling Stars",
+    "Pencil Candles",
+    "Flower Pots",
+    "Garland Crackers",
+  ];
+
+  // Capture URL search parameters on load/change
+  useEffect(() => {
+    const cat = searchParams.get("category");
+    const subcat = searchParams.get("subcategory");
+
+    if (cat) {
+      // Handle casing variations
+      const foundCat = categories.find(
+        (c) => c.toLowerCase() === decodeURIComponent(cat).toLowerCase()
+      );
+      if (foundCat) {
+        setActiveCategory(foundCat);
+      }
+    } else {
+      setActiveCategory("All");
+    }
+
+    if (subcat) {
+      const decodedSub = decodeURIComponent(subcat);
+      // chakra vs chakkras spelling matching
+      const matchedSub = subcategoriesList.find(
+        (s) =>
+          s.toLowerCase() === decodedSub.toLowerCase() ||
+          (s === "Chakras" && decodedSub.toLowerCase() === "chakkras")
+      );
+      if (matchedSub) {
+        setActiveSubcategory(matchedSub);
+      } else {
+        setActiveSubcategory(decodedSub);
+      }
+    } else {
+      setActiveSubcategory("All");
+    }
+  }, [searchParams]);
+
+  // Reset pagination on filters trigger
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, activeSubcategory, searchQuery]);
+
+  // Handle active subcategory reset on category tab change
+  const handleCategoryChange = (cat: string) => {
+    setActiveCategory(cat);
+    setActiveSubcategory("All");
+  };
+
   // Filtering Logic
   const filteredProducts = mockProducts.filter((product) => {
+    // 1. Category Filter Match
     const matchesCategory =
       activeCategory === "All" || product.category === activeCategory;
+
+    // 2. Subcategory Filter Match (only applies if activeCategory is Traditional Crackers)
+    const matchesSubcategory =
+      activeCategory !== "Traditional Crackers" ||
+      activeSubcategory === "All" ||
+      product.subcategory.toLowerCase() === activeSubcategory.toLowerCase() ||
+      (activeSubcategory === "Chakras" && product.subcategory.toLowerCase() === "chakkras");
+
+    // 3. Search Bar Match
     const matchesSearch =
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.desc.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+      product.desc.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesCategory && matchesSubcategory && matchesSearch;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
@@ -632,7 +748,7 @@ export default function ProductsPage() {
       
       <FireworksCanvas />
 
-      {/* SECTION 1: BREADCRUMB HERO (z-20, transparent bg, locked cinematic dark backdrop overlay) */}
+      {/* SECTION 1: BREADCRUMB HERO */}
       <section className="relative w-full py-32 flex items-center justify-center overflow-hidden z-20 bg-zinc-950">
         <BreadcrumbCanvas />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60 pointer-events-none z-0" />
@@ -677,14 +793,13 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* SECTION 2: SEARCH, FILTER, AND PRODUCTS PANEL (z-20, transparent bg to let Canvas show through) */}
+      {/* SECTION 2: SEARCH, FILTER, AND PRODUCTS PANEL */}
       <section className="relative w-full py-16 bg-transparent border-t border-zinc-200/50 dark:border-white/5 transition-colors duration-300 z-20">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           
-          {/* Main Grid Wrapper splits screen into sidebar (left) and product display (right) */}
           <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 relative z-30">
             
-            {/* COLUMN 1: LEFT SIDEBAR FILTERS (lg:w-1/4, Sticky) */}
+            {/* COLUMN 1: LEFT SIDEBAR FILTERS (Sticky) */}
             <div className="w-full lg:w-[280px] flex-shrink-0">
               <div className="bg-white/70 dark:bg-zinc-900/35 backdrop-blur-md border border-zinc-200/80 dark:border-white/10 rounded-3xl p-6 space-y-8 lg:sticky lg:top-28 h-fit shadow-lg text-left">
                 
@@ -716,27 +831,50 @@ export default function ProductsPage() {
                     {categories.map((cat, idx) => {
                       const isActive = activeCategory === cat;
                       return (
-                        <button
-                          key={idx}
-                          onClick={() => setActiveCategory(cat)}
-                          className={`w-full text-left px-4 py-3 rounded-2xl text-[11px] font-extrabold uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-between border ${
-                            isActive
-                              ? "bg-gradient-to-r from-amber-500 to-orange-500 border-orange-500/20 text-white shadow-md shadow-orange-500/10"
-                              : "bg-zinc-50/50 dark:bg-black/20 border-zinc-200/50 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300/80 dark:hover:border-white/10"
-                          }`}
-                        >
-                          <span>{cat}</span>
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                            isActive 
-                              ? "bg-white/20 text-white" 
-                              : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
-                          }`}>
-                            {cat === "All" 
-                              ? mockProducts.length 
-                              : mockProducts.filter((p) => p.category === cat).length
-                            }
-                          </span>
-                        </button>
+                        <div key={idx} className="space-y-1">
+                          <button
+                            onClick={() => handleCategoryChange(cat)}
+                            className={`w-full text-left px-4 py-3 rounded-2xl text-[11px] font-extrabold uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-between border ${
+                              isActive
+                                ? "bg-gradient-to-r from-amber-500 to-orange-500 border-orange-500/20 text-white shadow-md shadow-orange-500/10"
+                                : "bg-zinc-50/50 dark:bg-black/20 border-zinc-200/50 dark:border-white/5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300/80 dark:hover:border-white/10"
+                            }`}
+                          >
+                            <span>{cat}</span>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                              isActive 
+                                ? "bg-white/20 text-white" 
+                                : "bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
+                            }`}>
+                              {cat === "All" 
+                                ? mockProducts.length 
+                                : mockProducts.filter((p) => p.category === cat).length
+                              }
+                            </span>
+                          </button>
+
+                          {/* Accordion Submenu for Traditional Crackers */}
+                          {cat === "Traditional Crackers" && isActive && (
+                            <div className="pl-4 pt-1 pb-2 space-y-1.5 border-l border-zinc-200 dark:border-zinc-800 ml-4 mt-1">
+                              {subcategoriesList.map((sub, sIdx) => {
+                                const isSubActive = activeSubcategory === sub;
+                                return (
+                                  <button
+                                    key={sIdx}
+                                    onClick={() => setActiveSubcategory(sub)}
+                                    className={`block w-full text-left py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors ${
+                                      isSubActive
+                                        ? "text-orange-500 bg-orange-500/5"
+                                        : "text-zinc-500 hover:text-zinc-950 dark:hover:text-white"
+                                    }`}
+                                  >
+                                    • {sub}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -745,7 +883,7 @@ export default function ProductsPage() {
               </div>
             </div>
 
-            {/* COLUMN 2: RIGHT DISPLAY GRID (lg:w-3/4) */}
+            {/* COLUMN 2: RIGHT DISPLAY GRID */}
             <div className="flex-1 space-y-10">
               
               {/* Product Cards Grid */}
@@ -776,7 +914,6 @@ export default function ProductsPage() {
               {/* Pagination Controls */}
               {totalPages > 1 && filteredProducts.length > 0 && (
                 <div className="flex justify-center items-center gap-2 pt-6">
-                  {/* Prev Button */}
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
@@ -788,7 +925,6 @@ export default function ProductsPage() {
                     </svg>
                   </button>
 
-                  {/* Page Numbers */}
                   {Array.from({ length: totalPages }).map((_, pageIdx) => {
                     const pageNum = pageIdx + 1;
                     const isSelected = currentPage === pageNum;
@@ -807,7 +943,6 @@ export default function ProductsPage() {
                     );
                   })}
 
-                  {/* Next Button */}
                   <button
                     onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
@@ -828,17 +963,14 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* DETAIL MODAL (z-50) */}
+      {/* DETAIL MODAL */}
       {selectedProduct && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          {/* Main Card Container */}
           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-[2.5rem] max-w-3xl w-full p-6 md:p-10 relative overflow-hidden shadow-2xl animate-slide-up-fade text-left">
             
-            {/* Ambient glows behind modal columns */}
             <div className="absolute -top-32 -right-32 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl pointer-events-none" />
             <div className="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-red-500/10 blur-3xl pointer-events-none" />
 
-            {/* Close button */}
             <button
               onClick={() => setSelectedProduct(null)}
               className="absolute top-6 right-6 flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer z-50 shadow-sm"
@@ -850,7 +982,6 @@ export default function ProductsPage() {
             </button>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center relative z-40">
-              {/* Left Column: Image with offset outline */}
               <div className="relative group max-w-sm w-full mx-auto md:p-3">
                 <div className="absolute top-6 -left-6 w-full h-full bg-orange-500/5 rounded-[1.8rem] border border-orange-500/10 pointer-events-none z-0" />
                 <div className="absolute inset-0 border border-orange-500/20 rounded-[1.8rem] pointer-events-none z-0" />
@@ -870,12 +1001,18 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              {/* Right Column: Descriptions & Action */}
               <div className="space-y-5">
                 <div className="space-y-2">
-                  <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">
-                    {selectedProduct.category}
-                  </span>
+                  <div className="flex flex-col gap-0.5 text-left">
+                    <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none">
+                      {selectedProduct.category}
+                    </span>
+                    {selectedProduct.subcategory && (
+                      <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none mt-1">
+                        {selectedProduct.subcategory}
+                      </span>
+                    )}
+                  </div>
                   <h2 className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white leading-tight">
                     {selectedProduct.name}
                   </h2>
@@ -915,5 +1052,17 @@ export default function ProductsPage() {
       <Footer />
 
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-orange-500" />
+      </div>
+    }>
+      <ProductsCatalog />
+    </Suspense>
   );
 }
