@@ -76,6 +76,10 @@ export default function Navbar() {
     { name: "Where to Buy?", href: "/where-to-buy" },
   ];
 
+  if (pathname && pathname.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <div
       className={`fixed top-0 left-0 right-0 z-50 w-full px-4 pt-4 transition-all duration-300 sm:px-6 lg:px-8 ${

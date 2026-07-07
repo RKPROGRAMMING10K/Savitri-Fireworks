@@ -187,13 +187,13 @@ Violation of any of these prohibitions may result in immediate termination of ac
 
 **Savitri Fireworks Private Limited**
 Legal & Compliance Department
-142/3, Sivakasi Main Road, Thiruthangal,
-Sivakasi, Tamil Nadu - 626130, India.
+Amlner road.parola SH 48, Bodarde,
+Maharashtra 425111, India.
 
 **Email:** legal@savitrifireworks.com
 **General Enquiries:** info@savitrifireworks.com
-**Phone:** +91 94431 82054
-**Business Hours:** Monday to Saturday, 9:00 AM - 6:00 PM IST
+**Phone:** +91 2597 293 116
+**Business Hours:** Monday to Sunday, 9:00 AM - 8:00 PM IST (Open Daily)
 
 We aim to acknowledge all legal correspondence within 5 business days. For urgent legal matters, please mark your email "URGENT - LEGAL" in the subject line.`,
   },

@@ -176,12 +176,12 @@ To exercise any of these rights, please contact us at privacy@savitrifireworks.c
     content: `If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact our Data Protection Officer:
 
 **Savitri Fireworks Private Limited**
-142/3, Sivakasi Main Road, Thiruthangal,
-Sivakasi, Tamil Nadu - 626130, India.
+Amlner road.parola SH 48, Bodarde,
+Maharashtra 425111, India.
 
 **Email:** privacy@savitrifireworks.com
-**Phone:** +91 94431 82054
-**Operating Hours:** Monday to Saturday, 9:00 AM - 6:00 PM IST
+**Phone:** +91 2597 293 116
+**Operating Hours:** Monday to Sunday, 9:00 AM - 8:00 PM IST (Open Daily)
 
 We aim to resolve all privacy-related queries within 30 business days. For unresolved complaints, you may escalate to the relevant data protection authority under applicable Indian law.`,
   },
