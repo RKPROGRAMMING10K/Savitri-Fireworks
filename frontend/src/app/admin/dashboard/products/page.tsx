@@ -1,129 +1,181 @@
 "use client";
 
-import React, { useState } from "react";
-import { showSuccessToast } from "@/utils/notifications";
-
-interface Product {
-  id: string;
-  name: string;
-  code: string;
-  category: string;
-  shortDesc: string;
-  description: string;
-  image: string;
-}
+import React, { useState, useEffect, useCallback } from "react";
+import { showSuccessToast, showErrorToast } from "@/utils/notifications";
+import { productService } from "@/services/products/productService";
+import { categoryService } from "@/services/categories/categoryService";
+import { ProductDto } from "@/services/products/dto/product.dto";
+import { CategoryDto } from "@/services/categories/dto/category.dto";
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: "PROD-001",
-      name: "Electric Sparklers (10cm)",
-      code: "SF-SPK92",
-      category: "Traditional - Sparklers",
-      shortDesc: "Eco-friendly child-safe green sparklers.",
-      description: "Traditional child-safe green sparklers with high-quality golden sparkles. Burns consistently with low smoke output.",
-      image: "/assets/firework.png",
-    },
-    {
-      id: "PROD-002",
-      name: "120-Shot Majestic Cake",
-      code: "SF-CAK20",
-      category: "Elite Series",
-      shortDesc: "High altitude multicolor aerial display.",
-      description: "Grand aerial display shell multi-shot cake with multicolor palms, brocades, and crackling willow effects. Runs for 45 seconds.",
-      image: "/assets/firework.png",
-    },
-    {
-      id: "PROD-003",
-      name: "Deluxe Lunik Rockets",
-      code: "SF-ROC08",
-      category: "Aerial Novelties",
-      shortDesc: "Screaming high-altitude burst rocket.",
-      description: "High altitude rocket soaring up to 100 meters, bursting into vibrant red chrysanthemums and crackling sparks.",
-      image: "/assets/firework.png",
-    },
-    {
-      id: "PROD-004",
-      name: "Mega Fountain (Anar)",
-      code: "SF-POT04",
-      category: "Fountains",
-      shortDesc: "Dense flower pot fountain shower.",
-      description: "Giant flower pot fountain emitting dense showers of golden and silver sparks rising up to 5 meters.",
-      image: "/assets/firework.png",
-    },
-  ]);
-
+  const [products, setProducts] = useState<ProductDto[]>([]);
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeCategory, setActiveCategory] = useState<
-    "All" | "Traditional Crackers" | "Elite Series" | "Fountains" | "Aerial Novelties" | "Gift Boxes"
-  >("All");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>("All");
 
-  // New product form states (removed newProductCode since backend handles it)
+  // Modals
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+
+  // New product form states
   const [newProductName, setNewProductName] = useState("");
-  const [newProductCategory, setNewProductCategory] = useState("Traditional - Ground");
+  const [newProductCategoryId, setNewProductCategoryId] = useState("");
   const [newProductShortDesc, setNewProductShortDesc] = useState("");
   const [newProductDesc, setNewProductDesc] = useState("");
-  const [newProductImage, setNewProductImage] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
+
+  // New category form states
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatPrefix, setNewCatPrefix] = useState("");
+  const [newCatParentId, setNewCatParentId] = useState("");
+  const [isCategorySubmitting, setIsCategorySubmitting] = useState(false);
+
+  // 1. Fetch Categories dynamically on mount
+  const loadCategories = useCallback(async () => {
+    try {
+      const data = await categoryService.getCategories();
+      setCategories(data || []);
+      // Set default selected category id for the add modal
+      if (data && data.length > 0) {
+        const firstWithChild = data.find((c) => c.children && c.children.length > 0);
+        if (firstWithChild && firstWithChild.children && firstWithChild.children[0]) {
+          setNewProductCategoryId(firstWithChild.children[0].id);
+        } else {
+          setNewProductCategoryId(data[0].id);
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to load categories:", err);
+    }
+  }, []);
+
+  // 2. Fetch Products dynamically from Backend API
+  const loadProducts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await productService.getProducts({
+        category: activeCategory !== "All" ? activeCategory : undefined,
+        search: searchTerm.trim() || undefined,
+      });
+      setProducts(res.items || []);
+    } catch (err: any) {
+      console.error("Failed to load products:", err);
+      showErrorToast("Load Failed", err.message || "Failed to fetch catalog products.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeCategory, searchTerm]);
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadProducts();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [loadProducts]);
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const previewUrl = URL.createObjectURL(file);
       setImagePreview(previewUrl);
-      setNewProductImage(previewUrl);
     }
   };
 
-  const handleAddProductSubmit = (e: React.FormEvent) => {
+  const handleAddProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProductName) return;
+    if (!newProductName || !newProductCategoryId) {
+      showErrorToast("Validation Error", "Please provide product title and select a category.");
+      return;
+    }
 
-    // Generate a temporary frontend display code (since input is removed)
-    const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
-    const tempDisplayCode = `SF-MOCK-${randomSuffix}`;
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("name", newProductName);
+      formData.append("categoryId", newProductCategoryId);
+      formData.append("shortDesc", newProductShortDesc);
+      formData.append("description", newProductDesc);
+      if (selectedFile) {
+        formData.append("image", selectedFile);
+      }
 
-    const newProd: Product = {
-      id: `PROD-0${products.length + 1}`,
-      name: newProductName,
-      code: tempDisplayCode,
-      category: newProductCategory,
-      shortDesc: newProductShortDesc,
-      description: newProductDesc,
-      image: newProductImage || "/assets/firework.png", // fallback image
-    };
+      const created = await productService.createProduct(formData);
+      showSuccessToast(
+        "Product Added",
+        `"${created.name}" saved with SKU code ${created.code}.`
+      );
 
-    setProducts((prev) => [newProd, ...prev]);
-    showSuccessToast(
-      "Product Added",
-      `"${newProductName}" saved successfully. Product code will be generated on backend sync.`
-    );
-    setIsAddModalOpen(false);
+      // Reset Form states
+      setNewProductName("");
+      setNewProductShortDesc("");
+      setNewProductDesc("");
+      setSelectedFile(null);
+      setImagePreview("");
+      setIsAddModalOpen(false);
 
-    // Reset Form states
-    setNewProductName("");
-    setNewProductShortDesc("");
-    setNewProductDesc("");
-    setNewProductImage("");
-    setImagePreview("");
-    setNewProductCategory("Traditional - Ground");
+      // Reload products
+      await loadProducts();
+    } catch (err: any) {
+      showErrorToast("Error Creating Product", err.message || "Failed to save product.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchTerm.toLowerCase());
-      
-    // Custom filter logic to match "Traditional - *" sub-categories
-    const matchesCategory =
-      activeCategory === "All" ||
-      (activeCategory === "Traditional Crackers" && p.category.startsWith("Traditional - ")) ||
-      p.category === activeCategory;
-      
-    return matchesSearch && matchesCategory;
-  });
+  const handleAddCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) {
+      showErrorToast("Validation Error", "Please provide category name.");
+      return;
+    }
+
+    setIsCategorySubmitting(true);
+    try {
+      const created = await categoryService.createCategory({
+        name: newCatName.trim(),
+        codePrefix: newCatPrefix.trim() ? newCatPrefix.trim().toUpperCase() : undefined,
+        parentId: newCatParentId.trim() ? newCatParentId : undefined,
+      });
+
+      showSuccessToast(
+        "Category Created",
+        `Category "${created.name}" created successfully.`
+      );
+
+      setNewCatName("");
+      setNewCatPrefix("");
+      setNewCatParentId("");
+      setIsAddCategoryModalOpen(false);
+
+      await loadCategories();
+    } catch (err: any) {
+      showErrorToast("Category Creation Failed", err.message || "Failed to create category.");
+    } finally {
+      setIsCategorySubmitting(false);
+    }
+  };
+
+  const handleDeleteProduct = async (p: ProductDto) => {
+    if (!confirm(`Are you sure you want to delete "${p.name}" (${p.code})?`)) {
+      return;
+    }
+
+    try {
+      await productService.deleteProduct(p.id);
+      showSuccessToast("Product Deleted", `"${p.name}" has been removed from catalog database.`);
+      await loadProducts();
+    } catch (err: any) {
+      showErrorToast("Delete Failed", err.message || "Failed to delete product.");
+    }
+  };
 
   return (
     <div className="space-y-6 md:space-y-8 animate-fade-in-up">
@@ -148,36 +200,61 @@ export default function AdminProductsPage() {
             Configure, update, or append items to the fireworks showcase catalog
           </p>
         </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-xs font-black uppercase tracking-widest text-white rounded-2xl transition-all duration-300 shadow-lg shadow-orange-500/20 active:scale-95 cursor-pointer"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4.5 w-4.5">
-            <path fillRule="evenodd" d="M10 2a.75.75 0 01.75.75v7.25H18a.75.75 0 010 1.5h-7.25V18a.75.75 0 01-1.5 0v-7.25H2a.75.75 0 010-1.5h7.25V2.75A.75.75 0 0110 2z" clipRule="evenodd" />
-          </svg>
-          <span>Add New Product</span>
-        </button>
+
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => setIsAddCategoryModalOpen(true)}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-3.5 sm:px-4 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-xs font-black uppercase tracking-widest text-zinc-300 hover:text-white rounded-2xl transition-all duration-300 cursor-pointer whitespace-nowrap"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-orange-500">
+              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+            </svg>
+            <span>New Category</span>
+          </button>
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-3.5 sm:px-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-xs font-black uppercase tracking-widest text-white rounded-2xl transition-all duration-300 shadow-lg shadow-orange-500/20 active:scale-95 cursor-pointer whitespace-nowrap"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4.5 w-4.5">
+              <path fillRule="evenodd" d="M10 2a.75.75 0 01.75.75v7.25H18a.75.75 0 010 1.5h-7.25V18a.75.75 0 01-1.5 0v-7.25H2a.75.75 0 010-1.5h7.25V2.75A.75.75 0 0110 2z" clipRule="evenodd" />
+            </svg>
+            <span>Add New Product</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/50 p-4 border border-zinc-800/80 rounded-3xl backdrop-blur-sm">
-        <div className="flex border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950 select-none text-[10px] font-black uppercase tracking-wider">
-          {["All", "Traditional Crackers", "Elite Series", "Fountains", "Aerial Novelties", "Gift Boxes"].map((cat) => (
+      {/* Filter and Search Bar with Dynamic Categories */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4 bg-zinc-900/50 p-3 sm:p-4 border border-zinc-800/80 rounded-3xl backdrop-blur-sm">
+        <div className="max-w-full overflow-x-auto scrollbar-hide py-0.5">
+          <div className="inline-flex border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950 select-none text-[10px] font-black uppercase tracking-wider">
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat as any)}
-              className={`px-3 py-2.5 transition-all cursor-pointer ${
-                activeCategory === cat
+              onClick={() => setActiveCategory("All")}
+              className={`px-3 py-2.5 transition-all cursor-pointer whitespace-nowrap ${
+                activeCategory === "All"
                   ? "bg-orange-500 text-white font-black"
                   : "text-zinc-400 hover:text-white"
               }`}
             >
-              {cat === "Traditional Crackers" ? "Traditional" : cat}
+              All
             </button>
-          ))}
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.slug || cat.name)}
+                className={`px-3 py-2.5 transition-all cursor-pointer whitespace-nowrap ${
+                  activeCategory === cat.slug || activeCategory === cat.name
+                    ? "bg-orange-500 text-white font-black"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="relative w-full md:w-64">
+        <div className="relative w-full md:w-72">
           <input
             type="text"
             placeholder="Search code, category or name..."
@@ -191,17 +268,22 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Grid of Product Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProducts.length > 0 ? (
-          filteredProducts.map((p, idx) => (
+      {/* Products Grid */}
+      {isLoading ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-500">
+          <div className="h-7 w-7 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-bold uppercase tracking-widest">Loading Catalog...</span>
+        </div>
+      ) : products.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {products.map((p, idx) => (
             <div
               key={p.id}
               className="relative group bg-zinc-900 border border-zinc-800 rounded-3xl p-4 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/30 hover:shadow-xl hover:shadow-orange-500/5 flex flex-col justify-between overflow-hidden"
-              style={{ animationDelay: `${idx * 50}ms` }}
+              style={{ animationDelay: `${idx * 40}ms` }}
             >
               <div className="absolute top-0 right-0 h-24 w-24 bg-orange-500/5 blur-2xl rounded-full transition-all group-hover:bg-orange-500/10 pointer-events-none" />
-              
+
               <div>
                 {/* Product Image Area */}
                 <div className="relative h-40 w-full rounded-2xl bg-zinc-950 overflow-hidden border border-zinc-800/80 mb-4 shrink-0">
@@ -225,9 +307,9 @@ export default function AdminProductsPage() {
                       </svg>
                     </div>
                   )}
-                  {/* Overlay Category Tag */}
+                  {/* Dynamic Category Tag */}
                   <span className="absolute top-2.5 left-2.5 inline-block text-[8px] uppercase font-black tracking-widest bg-zinc-950/80 backdrop-blur-md text-orange-500 border border-orange-500/20 px-2.5 py-0.5 rounded-full select-none">
-                    {p.category.replace("Traditional - ", "")}
+                    {p.category?.name || "Firework"}
                   </span>
                 </div>
 
@@ -236,6 +318,11 @@ export default function AdminProductsPage() {
                     <span className="text-[9px] font-black text-zinc-500 tracking-wider">
                       {p.code}
                     </span>
+                    {p.tag && (
+                      <span className="text-[8px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
+                        {p.tag}
+                      </span>
+                    )}
                   </div>
                   <h3 className="text-sm font-black text-white uppercase tracking-wide group-hover:text-orange-400 transition-colors truncate">
                     {p.name}
@@ -251,22 +338,7 @@ export default function AdminProductsPage() {
 
               <div className="mt-5 pt-3 border-t border-zinc-800/80 flex items-center justify-end gap-2 shrink-0">
                 <button
-                  onClick={() => alert("Product edit feature coming soon...")}
-                  className="p-1.5 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 rounded-xl text-zinc-400 hover:text-white transition-all cursor-pointer"
-                  title="Edit Item"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                    <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 113 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                    <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm(`Are you sure you want to delete ${p.name}?`)) {
-                      setProducts((prev) => prev.filter((item) => item.id !== p.id));
-                      showSuccessToast("Product Deleted", `"${p.name}" has been removed from catalog database.`);
-                    }
-                  }}
+                  onClick={() => handleDeleteProduct(p)}
                   className="p-1.5 bg-zinc-950 border border-zinc-800 hover:border-red-500/20 hover:bg-red-500/5 rounded-xl text-zinc-500 hover:text-red-400 transition-all cursor-pointer"
                   title="Delete Item"
                 >
@@ -276,20 +348,125 @@ export default function AdminProductsPage() {
                 </button>
               </div>
             </div>
-          ))
-        ) : (
-          <div className="col-span-full py-16 text-center text-zinc-500 font-bold tracking-wide">
-            No matching firework items in database.
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="col-span-full py-16 text-center text-zinc-500 font-bold tracking-wide bg-zinc-900/30 rounded-3xl border border-zinc-900">
+          <p className="text-sm text-zinc-400 font-black uppercase tracking-wider mb-1">
+            No firework items in catalog yet.
+          </p>
+          <p className="text-xs text-zinc-600 font-semibold">
+            {categories.length === 0
+              ? 'Click "New Category" to create a category, then click "Add New Product" to start building your catalog.'
+              : 'Click "Add New Product" to add your first firework listing.'}
+          </p>
+        </div>
+      )}
 
-      {/* Add Product Modal */}
+      {/* Add Category Modal */}
+      {isAddCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm">
+          <form
+            onSubmit={handleAddCategorySubmit}
+            className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-6 md:p-8 shadow-2xl shadow-black/80 animate-fade-in-up"
+          >
+            <button
+              type="button"
+              onClick={() => setIsAddCategoryModalOpen(false)}
+              className="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4.5 w-4.5">
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+              </svg>
+            </button>
+
+            <div className="mb-6">
+              <h3 className="text-base font-black uppercase text-white tracking-wider">
+                Create Dynamic Category
+              </h3>
+              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">
+                Define a category or subcategory for catalog organization
+              </p>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">
+                  Category Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Sparklers or Elite Series"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white focus:outline-none focus:border-orange-500/50 font-semibold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">
+                  SKU Code Prefix (3 Letters, Optional)
+                </label>
+                <input
+                  type="text"
+                  maxLength={5}
+                  placeholder="e.g. SPK, CAK, FNT (auto-generated if empty)"
+                  value={newCatPrefix}
+                  onChange={(e) => setNewCatPrefix(e.target.value)}
+                  className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white focus:outline-none focus:border-orange-500/50 font-semibold uppercase"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">
+                  Parent Category (Optional)
+                </label>
+                <select
+                  value={newCatParentId}
+                  onChange={(e) => setNewCatParentId(e.target.value)}
+                  className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white focus:outline-none focus:border-orange-500/50 font-semibold cursor-pointer"
+                >
+                  <option value="">None (Top-Level Category)</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-zinc-800 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsAddCategoryModalOpen(false)}
+                disabled={isCategorySubmitting}
+                className="py-2.5 px-5 bg-zinc-800 border border-zinc-700 hover:border-zinc-600 text-xs font-black uppercase text-white tracking-widest rounded-2xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isCategorySubmitting}
+                className="py-2.5 px-5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-xs font-black uppercase tracking-widest text-white rounded-2xl transition-all shadow-lg active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              >
+                {isCategorySubmitting && (
+                  <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                <span>{isCategorySubmitting ? "Creating..." : "Save Category"}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Add Product Modal with Dynamic Categories */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm">
           <form
             onSubmit={handleAddProductSubmit}
-            className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/80 animate-fade-in-up"
+            className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-6 md:p-8 shadow-2xl shadow-black/80 animate-fade-in-up"
           >
             {/* Modal Close */}
             <button
@@ -314,7 +491,7 @@ export default function AdminProductsPage() {
 
             {/* Form Fields */}
             <div className="space-y-4 text-xs">
-              {/* Row 1: Title and Category */}
+              {/* Row 1: Title and Dynamic Category */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Product Title</label>
@@ -329,25 +506,46 @@ export default function AdminProductsPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Category</label>
-                  <select
-                    value={newProductCategory}
-                    onChange={(e) => setNewProductCategory(e.target.value)}
-                    className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white focus:outline-none focus:border-orange-500/50 font-semibold"
-                  >
-                    <optgroup label="Traditional Crackers">
-                      <option value="Traditional - Ground">Ground</option>
-                      <option value="Traditional - Chakkras">Chakkras</option>
-                      <option value="Traditional - Sparklers">Sparklers</option>
-                      <option value="Traditional - Twinkling Stars">Twinkling Stars</option>
-                      <option value="Traditional - Pencil Candle">Pencil Candle</option>
-                      <option value="Traditional - Flower Pots">Flower Pots</option>
-                      <option value="Traditional - Garland Crackers">Garland Crackers</option>
-                    </optgroup>
-                    <option value="Elite Series">Elite Series</option>
-                    <option value="Fountains">Fountains</option>
-                    <option value="Aerial Novelties">Aerial Novelties</option>
-                    <option value="Gift Boxes">Gift Boxes</option>
-                  </select>
+                  {categories.length > 0 ? (
+                    <select
+                      value={newProductCategoryId}
+                      onChange={(e) => setNewProductCategoryId(e.target.value)}
+                      className="w-full p-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white focus:outline-none focus:border-orange-500/50 font-semibold cursor-pointer"
+                    >
+                      {categories.map((cat) => {
+                        if (cat.children && cat.children.length > 0) {
+                          return (
+                            <optgroup key={cat.id} label={cat.name}>
+                              {cat.children.map((child) => (
+                                <option key={child.id} value={child.id}>
+                                  {child.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          );
+                        }
+                        return (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  ) : (
+                    <div className="text-[10px] text-zinc-500 p-2.5 border border-zinc-800 rounded-xl bg-zinc-950">
+                      No categories yet.{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddModalOpen(false);
+                          setIsAddCategoryModalOpen(true);
+                        }}
+                        className="text-orange-400 underline font-bold"
+                      >
+                        Create one first
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -377,9 +575,9 @@ export default function AdminProductsPage() {
                 />
               </div>
 
-              {/* Row 4: Image Upload Area */}
+              {/* Row 4: Image Upload Area (Uploaded to MinIO via backend) */}
               <div className="space-y-1">
-                <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Product Image</label>
+                <label className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Product Image (MinIO S3)</label>
                 <div className="grid grid-cols-3 gap-4 items-center">
                   <div className="col-span-2 relative border border-dashed border-zinc-800 rounded-xl p-3 bg-zinc-950 text-center hover:border-orange-500/30 transition-all cursor-pointer">
                     <input
@@ -402,7 +600,7 @@ export default function AdminProductsPage() {
                       <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider">Select Firework Image</span>
                     </div>
                   </div>
-                  
+
                   {/* Thumbnail preview */}
                   <div className="relative h-16 w-full rounded-xl bg-zinc-950 overflow-hidden border border-zinc-800 flex items-center justify-center">
                     {imagePreview ? (
@@ -424,15 +622,20 @@ export default function AdminProductsPage() {
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="py-2.5 px-5 bg-zinc-800 border border-zinc-700 hover:border-zinc-600 text-xs font-black uppercase text-white tracking-widest rounded-2xl transition-all cursor-pointer"
+                disabled={isSubmitting}
+                className="py-2.5 px-5 bg-zinc-800 border border-zinc-700 hover:border-zinc-600 text-xs font-black uppercase text-white tracking-widest rounded-2xl transition-all cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="py-2.5 px-5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-xs font-black uppercase tracking-widest text-white rounded-2xl transition-all shadow-lg active:scale-95 cursor-pointer"
+                disabled={isSubmitting || categories.length === 0}
+                className="py-2.5 px-5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-xs font-black uppercase tracking-widest text-white rounded-2xl transition-all shadow-lg active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-2"
               >
-                Save Listing
+                {isSubmitting && (
+                  <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                <span>{isSubmitting ? "Uploading & Saving..." : "Save Listing"}</span>
               </button>
             </div>
           </form>

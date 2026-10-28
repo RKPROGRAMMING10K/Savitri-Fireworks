@@ -1,0 +1,85 @@
+services:
+  # =========================================================================
+  # PostgreSQL Database Service
+  # =========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: savitri-postgres
+    restart: unless-stopped
+    ports:
+      - "${DATABASE_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      POSTGRES_DB: ${DATABASE_NAME:-savitri_db}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-postgres} -d ${DATABASE_NAME:-savitri_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - savitri-network
+
+  # =========================================================================
+  # MinIO Object Storage Service (S3-compatible storage for images/media)
+  # =========================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: savitri-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_PORT:-9000}:9000"         # S3 API endpoint
+      - "9001:9001"                        # Web Management Console UI
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+    volumes:
+      - minio_data:/data
+    networks:
+      - savitri-network
+
+  # =========================================================================
+  # MinIO Initialization Helper
+  # Creates the default bucket and sets public download policy
+  # =========================================================================
+  minio-init:
+    image: minio/mc:latest
+    container_name: savitri-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO service to accept connections...';
+      until /usr/bin/mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin123}; do
+        sleep 1;
+      done;
+      echo 'Creating bucket: $${MINIO_BUCKET_NAME:-savitri-uploads}...';
+      /usr/bin/mc mb --ignore-existing myminio/$${MINIO_BUCKET_NAME:-savitri-uploads};
+      echo 'Setting public download policy on $${MINIO_BUCKET_NAME:-savitri-uploads}...';
+      /usr/bin/mc anonymous set download myminio/$${MINIO_BUCKET_NAME:-savitri-uploads};
+      echo 'MinIO bucket initialized successfully!';
+      exit 0;
+      "
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-savitri-uploads}
+    networks:
+      - savitri-network
+
+volumes:
+  postgres_data:
+    name: savitri_postgres_data
+  minio_data:
+    name: savitri_minio_data
+
+networks:
+  savitri-network:
+    name: savitri_network
+    driver: bridge

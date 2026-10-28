@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import Footer from "@/components/Footer";
 import FireworksCanvas from "@/components/FireworksCanvas";
 import BreadcrumbCanvas from "@/components/BreadcrumbCanvas";
+import { enquiryService } from "@/services/enquiries/enquiryService";
 
 declare global {
   interface Window {
@@ -37,6 +38,7 @@ function EnquiryFormContent() {
 
   // Attachment State
   const [attachment, setAttachment] = useState<FileAttachment | null>(null);
+  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
 
   // Status State
@@ -61,27 +63,17 @@ function EnquiryFormContent() {
     }
   }, [searchParams]);
 
-  // Load SMTP JS script dynamically
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://smtpjs.com/v3/smtp.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
   // Handle image upload and conversion to Base64
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("File size exceeds 2MB limit!");
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size exceeds 10MB limit!");
       return;
     }
 
+    setSelectedUploadFile(file);
     setFileName(file.name);
 
     const reader = new FileReader();
@@ -98,6 +90,7 @@ function EnquiryFormContent() {
   const handleRemoveFile = (e: React.MouseEvent) => {
     e.stopPropagation();
     setAttachment(null);
+    setSelectedUploadFile(null);
     setFileName("");
   };
 
@@ -107,22 +100,6 @@ function EnquiryFormContent() {
     setSubmitStatus("submitting");
     setErrorMessage("");
 
-    // Compile email body HTML
-    const emailBody = `
-      <h3>New Savitri Fireworks Enquiry</h3>
-      <p><b>Name:</b> ${name}</p>
-      <p><b>Email:</b> ${email}</p>
-      <p><b>Phone:</b> ${phone}</p>
-      <p><b>Enquiry Type:</b> ${enquiryType}</p>
-      <p><b>Subject:</b> ${subject}</p>
-      ${productName ? `<p><b>Product Selection:</b> ${productName}</p>` : ""}
-      ${dealerName ? `<p><b>Dealer Selection:</b> ${dealerName}</p>` : ""}
-      ${companyName ? `<p><b>Company Name:</b> ${companyName}</p>` : ""}
-      ${pesoLicense ? `<p><b>PESO License / GSTIN:</b> ${pesoLicense}</p>` : ""}
-      <p><b>Message:</b></p>
-      <p>${message}</p>
-    `;
-
     // Retrieve button client coordinates for the firework explosion
     const buttonRect = (e.target as HTMLFormElement)
       .querySelector("button[type='submit']")
@@ -131,24 +108,23 @@ function EnquiryFormContent() {
     const blastY = buttonRect ? buttonRect.top + buttonRect.height / 2 : window.innerHeight / 2;
 
     try {
-      if (window.Email) {
-        // Send email via SmtpJS
-        const response = await window.Email.send({
-          SecureToken: "a093b194-e0b3-4f92-9111-d039f9021b39", // Replace with your SmtpJS token
-          To: "enquiry@savitrifireworks.com",
-          From: "noreply@savitrifireworks.com",
-          Subject: `[Enquiry - ${enquiryType}] ${subject}`,
-          Body: emailBody,
-          Attachments: attachment ? [attachment] : [],
-        });
+      // 1. Submit to Backend API (Saves to PostgreSQL + MinIO)
+      const formData = new FormData();
+      formData.append("name", name.trim());
+      formData.append("email", email.trim());
+      formData.append("phone", phone.trim());
+      formData.append("enquiryType", enquiryType);
+      formData.append("subject", subject.trim());
+      formData.append("message", message.trim());
+      if (productName) formData.append("productName", productName.trim());
+      if (dealerName) formData.append("dealerName", dealerName.trim());
+      if (companyName) formData.append("companyName", companyName.trim());
+      if (pesoLicense) formData.append("pesoLicense", pesoLicense.trim());
+      if (selectedUploadFile) formData.append("attachment", selectedUploadFile);
 
-        console.log("SMTP Response:", response);
-      } else {
-        // Simulate network delay if SMTP JS fails to load
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-      }
+      await enquiryService.createEnquiry(formData);
 
-      // Celebrate success!
+      // Celebrate success with fireworks animation!
       window.dispatchEvent(
         new CustomEvent("trigger-firework", {
           detail: {
@@ -167,10 +143,11 @@ function EnquiryFormContent() {
       setSubject("");
       setMessage("");
       setAttachment(null);
+      setSelectedUploadFile(null);
       setFileName("");
     } catch (err: any) {
-      console.error("Email send error:", err);
-      setErrorMessage("Failed to send message. Please try again later.");
+      console.error("Enquiry submit error:", err);
+      setErrorMessage(err.message || "Failed to submit enquiry. Please try again later.");
       setSubmitStatus("error");
     }
   };

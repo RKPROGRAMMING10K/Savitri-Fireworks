@@ -24,14 +24,27 @@ export default function Footer() {
           
           {/* Column 1: Brand details */}
           <div className="space-y-6 text-left">
-            <div className="flex items-center gap-2 group cursor-pointer">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white font-black text-xl shadow-lg transition-transform duration-500 group-hover:rotate-[360deg]">
-                S
-              </span>
-              <span className="text-white text-lg font-black tracking-widest uppercase transition-colors duration-300 group-hover:text-orange-400">
-                Savitri <span className="text-orange-500">Fireworks</span>
-              </span>
-            </div>
+            <Link href="/" className="flex items-center gap-4 group cursor-pointer">
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full overflow-hidden transition-transform duration-500 group-hover:scale-105 drop-shadow-[0_0_25px_rgba(249,115,22,0.3)]">
+                <img
+                  src="/assets/logo.png"
+                  alt="Savitri Fireworks"
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div className="flex flex-col space-y-0.5">
+                <span className="text-white text-xl sm:text-2xl font-black tracking-wider uppercase transition-colors duration-300 group-hover:text-orange-400 leading-tight">
+                  Savitri <span className="text-orange-500">Fireworks</span>
+                </span>
+                <span className="text-[11px] font-bold tracking-widest text-zinc-400 uppercase">
+                  India&apos;s Trusted Pyrotechnics
+                </span>
+                <span className="text-[10px] font-semibold text-amber-400/90 tracking-wider uppercase flex items-center gap-1.5 pt-0.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Eco-Friendly Green Crackers
+                </span>
+              </div>
+            </Link>
             <p className="text-xs text-zinc-400 font-medium leading-relaxed">
               India's premier manufacturer of high-altitude display shells, eco-friendly green sparklers, and child-safe celebration novelties. Lighting up memories since 1990.
             </p>

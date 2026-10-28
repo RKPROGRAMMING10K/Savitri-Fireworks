@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { showErrorToast } from "@/utils/notifications";
+import { authService } from "@/services/auth/authService";
+import { AdminProfileDto } from "@/services/auth/dto/auth.dto";
 
 export default function AdminDashboardLayout({
   children,
@@ -60,15 +62,6 @@ export default function AdminDashboardLayout({
         </svg>
       ),
     },
-    {
-      name: "Settings",
-      href: "/admin/dashboard/settings",
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5.5 w-5.5">
-          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-        </svg>
-      ),
-    },
   ];
 
   const isActive = (href: string) => {
@@ -84,7 +77,6 @@ export default function AdminDashboardLayout({
   const getPathIndicator = () => {
     if (pathname === "/admin/dashboard/products") return "Products";
     if (pathname === "/admin/dashboard/enquiries") return "Enquiries";
-    if (pathname === "/admin/dashboard/settings") return "Settings";
     if (pathname === "/admin/dashboard/media") return "Media";
     if (pathname === "/admin/dashboard/stores") return "Store Listing";
     return "Dashboard";
@@ -93,6 +85,7 @@ export default function AdminDashboardLayout({
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [adminUser, setAdminUser] = useState<AdminProfileDto | null>(null);
 
   // Layout States
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -102,15 +95,36 @@ export default function AdminDashboardLayout({
 
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Authentication check
+  // Strict backend authentication check on mount
   useEffect(() => {
-    const auth = localStorage.getItem("admin_authenticated");
-    if (auth !== "true") {
-      router.replace("/admin/login");
-    } else {
-      setIsAuthenticated(true);
-      setCheckingAuth(false);
+    let isMounted = true;
+
+    async function verifyAdminSession() {
+      if (!authService.isAuthenticated()) {
+        router.replace("/admin/login");
+        return;
+      }
+
+      try {
+        const profile = await authService.getProfile();
+        if (isMounted) {
+          setAdminUser(profile);
+          setIsAuthenticated(true);
+          setCheckingAuth(false);
+        }
+      } catch {
+        if (isMounted) {
+          authService.clearSession();
+          router.replace("/admin/login");
+        }
+      }
     }
+
+    verifyAdminSession();
+
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   // Fullscreen event listener
@@ -137,9 +151,9 @@ export default function AdminDashboardLayout({
     };
   }, []);
 
-  // Logout handler
-  const handleLogout = () => {
-    localStorage.removeItem("admin_authenticated");
+  // Logout handler calling authService
+  const handleLogout = async () => {
+    await authService.logout();
     router.push("/admin/login");
   };
 
@@ -154,13 +168,19 @@ export default function AdminDashboardLayout({
     }
   };
 
-  // Loading Screen (prevents flash of dashboard content)
+  const getInitials = (name?: string) => {
+    if (!name) return "SA";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  // Loading Screen (prevents flash of dashboard content before auth is verified)
   if (checkingAuth || !isAuthenticated) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-zinc-950 text-white font-sans">
         <div className="text-center space-y-4">
           <div className="relative inline-flex h-12 w-12 items-center justify-center">
-            {/* Spinning gradient border */}
             <div className="absolute inset-0 rounded-full border-4 border-orange-500/20 border-t-orange-500 animate-spin" />
           </div>
           <p className="text-xs uppercase tracking-widest text-zinc-400 font-bold animate-pulse">
@@ -173,9 +193,7 @@ export default function AdminDashboardLayout({
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex overflow-hidden">
-      {/* ========================================================================= */}
       {/* MOBILE SIDEBAR DRAWER OVERLAY */}
-      {/* ========================================================================= */}
       {isMobileSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden transition-opacity duration-300"
@@ -183,9 +201,7 @@ export default function AdminDashboardLayout({
         />
       )}
 
-      {/* ========================================================================= */}
       {/* SIDEBAR NAVIGATION */}
-      {/* ========================================================================= */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex flex-col bg-zinc-900 border-r border-zinc-800 transition-all duration-300 ease-in-out md:static
           ${isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
@@ -194,21 +210,12 @@ export default function AdminDashboardLayout({
       >
         {/* Sidebar Header / Logo */}
         <div className="h-16 flex items-center px-4 border-b border-zinc-800 gap-3 shrink-0">
-          <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/10">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="h-5.5 w-5.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-              />
-            </svg>
+          <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-full overflow-hidden">
+            <img
+              src="/assets/logo.png"
+              alt="Savitri Fireworks"
+              className="h-full w-full object-contain"
+            />
           </div>
           {!isSidebarCollapsed && (
             <div className="flex flex-col select-none overflow-hidden whitespace-nowrap">
@@ -220,6 +227,16 @@ export default function AdminDashboardLayout({
               </span>
             </div>
           )}
+          {/* Mobile Close Button */}
+          <button
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="md:hidden ml-auto h-8 w-8 rounded-xl bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-colors"
+            title="Close Menu"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Sidebar Menu Scroll Area */}
@@ -234,6 +251,7 @@ export default function AdminDashboardLayout({
               <Link
                 key={item.name}
                 href={item.href}
+                onClick={() => setIsMobileSidebarOpen(false)}
                 className={`flex items-center gap-3.5 py-3 px-3.5 rounded-2xl transition-all duration-200 group relative
                   ${
                     active
@@ -274,13 +292,9 @@ export default function AdminDashboardLayout({
         </div>
       </aside>
 
-      {/* ========================================================================= */}
       {/* MAIN CONTENT AREA */}
-      {/* ========================================================================= */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* ========================================================================= */}
         {/* NAVBAR */}
-        {/* ========================================================================= */}
         <header className="h-16 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 md:px-6 shrink-0 z-30">
           {/* Navbar Left: Sidebar Toggles */}
           <div className="flex items-center gap-3">
@@ -374,10 +388,10 @@ export default function AdminDashboardLayout({
               >
                 {/* Glowing Avatar Initials */}
                 <div className="h-7 w-7 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 text-white flex items-center justify-center text-xs font-black shadow-md shadow-orange-500/10">
-                  SA
+                  {getInitials(adminUser?.name)}
                 </div>
                 <span className="hidden sm:block text-xs font-bold text-zinc-300">
-                  Super Admin
+                  {adminUser?.name || "Super Admin"}
                 </span>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -401,10 +415,10 @@ export default function AdminDashboardLayout({
                   {/* User Profile Summary */}
                   <div className="px-3 py-2.5 select-none">
                     <p className="text-xs font-black text-white uppercase tracking-wide">
-                      Super Admin
+                      {adminUser?.name || "Super Admin"}
                     </p>
                     <p className="text-[10px] text-zinc-500 font-semibold truncate">
-                      admin@savitrifireworks.com
+                      {adminUser?.email || "admin@savitrifireworks.com"}
                     </p>
                   </div>
 
@@ -427,28 +441,6 @@ export default function AdminDashboardLayout({
                       <path d="M10 8a3 3 0 100-6 3 3 0 000 6zM8 8a5 5 0 00-1 1v3h6V9a5 5 0 00-5-5z" />
                     </svg>
                     <span>My Profile</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      showErrorToast("System Locked", "Portal settings are managed via core service files.");
-                      setIsProfileOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800/60 rounded-xl transition-all cursor-pointer text-left"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      className="h-4 w-4 text-zinc-500"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span>System Settings</span>
                   </button>
 
                   <div className="h-px bg-zinc-800 my-1.5" />
@@ -478,10 +470,8 @@ export default function AdminDashboardLayout({
           </div>
         </header>
 
-        {/* ========================================================================= */}
         {/* SCROLLABLE PAGE BODY */}
-        {/* ========================================================================= */}
-        <main className="flex-1 overflow-y-auto bg-zinc-950 p-4 md:p-6 lg:p-8 select-text">
+        <main className="flex-1 overflow-y-auto bg-zinc-950 p-3 sm:p-5 md:p-6 lg:p-8 select-text">
           <div className="w-full">
             {children}
           </div>

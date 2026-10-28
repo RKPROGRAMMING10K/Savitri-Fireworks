@@ -1,150 +1,128 @@
 "use client";
 
-import React, { useState } from "react";
-import { showSuccessToast } from "@/utils/notifications";
-
-interface MediaItem {
-  id: string;
-  type: "Photo" | "Video";
-  title: string;
-  shortDesc: string;
-  tags: string[];
-  image?: string; // for Photo uploads
-  videoPlatform?: "Instagram Reels" | "Youtube Shorts";
-  videoUrl?: string; // for Video entries
-  date: string;
-}
+import React, { useState, useEffect, useCallback } from "react";
+import { showSuccessToast, showErrorToast } from "@/utils/notifications";
+import { mediaService } from "@/services/media/mediaService";
+import { MediaDto } from "@/services/media/dto/media.dto";
 
 export default function AdminMediaPage() {
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([
-    {
-      id: "MED-001",
-      type: "Photo",
-      title: "Diwali Sparklers Close-Up",
-      shortDesc: "Vibrant golden spark emission captured in macro.",
-      tags: ["Sparklers"],
-      image: "/assets/firework.png",
-      date: "Today, 11:30 AM",
-    },
-    {
-      id: "MED-002",
-      type: "Video",
-      title: "120-Shot Crackling Willow",
-      shortDesc: "Full aerial display demonstration video.",
-      tags: ["GrandShow", "Willow", "Cakes"],
-      videoPlatform: "Youtube Shorts",
-      videoUrl: "https://www.youtube.com/shorts/demo123",
-      date: "Yesterday, 3:00 PM",
-    },
-    {
-      id: "MED-003",
-      type: "Photo",
-      title: "Mega Flower Pot Spark Shower",
-      shortDesc: "Showcasing the 5-meter height climb.",
-      tags: ["Fountains"],
-      image: "/assets/firework.png",
-      date: "July 05, 2026",
-    },
-    {
-      id: "MED-004",
-      type: "Video",
-      title: "Golden Aura Reel",
-      shortDesc: "Aesthetic slow-motion background sparkler capture.",
-      tags: ["Aesthetic", "Sparklers", "SlowMo"],
-      videoPlatform: "Instagram Reels",
-      videoUrl: "https://www.instagram.com/reel/demo456",
-      date: "July 04, 2026",
-    },
-  ]);
-
+  const [mediaItems, setMediaItems] = useState<MediaDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"Photo" | "Video">("Photo");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Modals
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [activeVideoToPlay, setActiveVideoToPlay] = useState<MediaDto | null>(null);
 
   // Form states
   const [mediaType, setMediaType] = useState<"Photo" | "Video">("Photo");
   const [title, setTitle] = useState("");
   const [shortDesc, setShortDesc] = useState("");
   const [tagsInput, setTagsInput] = useState("");
-  
-  // Photo form states
-  const [photoImage, setPhotoImage] = useState("");
-  const [photoPreview, setPhotoPreview] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState("");
+  const [directUrl, setDirectUrl] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Video form states
-  const [videoPlatform, setVideoPlatform] = useState<"Instagram Reels" | "Youtube Shorts">("Instagram Reels");
-  const [videoUrl, setVideoUrl] = useState("");
+  // 1. Fetch Media dynamically from Backend API
+  const loadMedia = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await mediaService.getMedia({
+        type: activeTab,
+        search: searchTerm.trim() || undefined,
+      });
+      setMediaItems(res.items || []);
+    } catch (err: any) {
+      console.error("Failed to load media:", err);
+      showErrorToast("Load Failed", err.message || "Failed to fetch media assets.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeTab, searchTerm]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadMedia();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [loadMedia]);
 
   const handleCloseModal = () => {
-    setIsModalOpen(false);
-    // Reset all form inputs
+    setIsUploadModalOpen(false);
     setTitle("");
     setShortDesc("");
     setTagsInput("");
-    setPhotoImage("");
-    setPhotoPreview("");
-    setVideoUrl("");
-    setVideoPlatform("Instagram Reels");
+    setSelectedFile(null);
+    setFilePreview("");
+    setDirectUrl("");
+    setIsSubmitting(false);
   };
 
-  const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const previewUrl = URL.createObjectURL(file);
-      setPhotoPreview(previewUrl);
-      setPhotoImage(previewUrl);
+      setFilePreview(previewUrl);
     }
   };
 
-  const handleAddMediaSubmit = (e: React.FormEvent) => {
+  const handleAddMediaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !shortDesc) return;
-
-    let tagsList: string[] = [];
-    if (mediaType === "Photo") {
-      tagsList = tagsInput.trim() ? [tagsInput.trim()] : ["General"];
-    } else {
-      tagsList = tagsInput
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter((tag) => tag.length > 0);
-      if (tagsList.length === 0) tagsList = ["Shorts"];
+    if (!title.trim() || !shortDesc.trim()) {
+      showErrorToast("Validation Error", "Title and short description are required.");
+      return;
     }
 
-    const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const dateString = `Today, ${timeString}`;
+    if (!selectedFile && !directUrl.trim()) {
+      showErrorToast("Validation Error", `Please select a ${mediaType.toLowerCase()} file to upload or provide a direct URL.`);
+      return;
+    }
 
-    const newMedia: MediaItem = {
-      id: `MED-0${mediaItems.length + 1}`,
-      type: mediaType,
-      title,
-      shortDesc,
-      tags: tagsList,
-      date: dateString,
-      image: mediaType === "Photo" ? (photoImage || "/assets/firework.png") : undefined,
-      videoPlatform: mediaType === "Video" ? videoPlatform : undefined,
-      videoUrl: mediaType === "Video" ? (videoUrl || "https://example.com/mockvideo") : undefined,
-    };
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("type", mediaType);
+      formData.append("title", title.trim());
+      formData.append("shortDesc", shortDesc.trim());
+      formData.append("tags", tagsInput.trim());
 
-    setMediaItems((prev) => [newMedia, ...prev]);
-    showSuccessToast(
-      "Media Uploaded",
-      `"${title}" successfully saved inside ${mediaType} gallery.`
-    );
-    
-    setActiveTab(mediaType);
-    setIsModalOpen(false);
+      if (selectedFile) {
+        formData.append("file", selectedFile);
+      } else if (directUrl.trim()) {
+        formData.append("url", directUrl.trim());
+      }
 
-    // Reset Form
-    setTitle("");
-    setShortDesc("");
-    setTagsInput("");
-    setPhotoImage("");
-    setPhotoPreview("");
-    setVideoUrl("");
-    setVideoPlatform("Instagram Reels");
+      const created = await mediaService.createMedia(formData);
+      showSuccessToast(
+        "Media Uploaded",
+        `"${created.title}" successfully added to ${created.type} gallery.`
+      );
+
+      handleCloseModal();
+      await loadMedia();
+    } catch (err: any) {
+      showErrorToast("Upload Failed", err.message || "Failed to upload media item.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const filteredItems = mediaItems.filter((item) => item.type === activeTab);
+  const handleDeleteMedia = async (item: MediaDto) => {
+    if (!confirm(`Are you sure you want to permanently delete "${item.title}"?`)) {
+      return;
+    }
+
+    try {
+      await mediaService.deleteMedia(item.id);
+      showSuccessToast("Media Deleted", `"${item.title}" removed from database and storage.`);
+      await loadMedia();
+    } catch (err: any) {
+      showErrorToast("Delete Failed", err.message || "Failed to delete media item.");
+    }
+  };
 
   return (
     <div className="relative w-full min-h-screen">
@@ -159,89 +137,125 @@ export default function AdminMediaPage() {
         }
       `}} />
 
-      {/* Main Content Area (Animated) */}
+      {/* Main Content Area */}
       <div className="space-y-6 md:space-y-8 animate-fade-in-up">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-900 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-b border-zinc-900 pb-4 sm:pb-5">
           <div>
             <h1 className="text-xl md:text-2xl font-black uppercase tracking-wider text-white">
               Media <span className="text-orange-500 font-black">Library</span>
             </h1>
             <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">
-              Browse and manage files, product images, and social video shorts
+              Direct showcase photos and watermark-free video shorts
             </p>
           </div>
-          
+
           <button
             onClick={() => {
               setMediaType(activeTab);
-              setIsModalOpen(true);
+              setIsUploadModalOpen(true);
             }}
-            className="flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-xs font-black uppercase tracking-widest text-white rounded-2xl transition-all duration-300 shadow-lg shadow-orange-500/20 active:scale-95 cursor-pointer"
+            className="flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-xs font-black uppercase tracking-widest text-white rounded-2xl transition-all duration-300 shadow-lg shadow-orange-500/20 active:scale-95 cursor-pointer self-start sm:self-auto w-full sm:w-auto"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4.5 w-4.5">
               <path fillRule="evenodd" d="M10 2a.75.75 0 01.75.75v7.25H18a.75.75 0 010 1.5h-7.25V18a.75.75 0 01-1.5 0v-7.25H2a.75.75 0 010-1.5h7.25V2.75A.75.75 0 0110 2z" clipRule="evenodd" />
             </svg>
-            <span>Add New Media</span>
+            <span>Add New {activeTab}</span>
           </button>
         </div>
 
-        {/* Segment Tabs Navigation */}
-        <div className="flex border border-zinc-800 rounded-2xl overflow-hidden bg-zinc-950/50 p-1 w-fit select-none text-xs font-black uppercase tracking-wider">
-          <button
-            onClick={() => setActiveTab("Photo")}
-            className={`px-5 py-2.5 rounded-xl transition-all cursor-pointer ${
-              activeTab === "Photo"
-                ? "bg-orange-500 text-white font-black"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Photos
-          </button>
-          <button
-            onClick={() => setActiveTab("Video")}
-            className={`px-5 py-2.5 rounded-xl transition-all cursor-pointer ${
-              activeTab === "Video"
-                ? "bg-orange-500 text-white font-black"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            Videos
-          </button>
+        {/* Tab Selector & Search Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-zinc-900/50 p-3 sm:p-4 border border-zinc-800/80 rounded-3xl backdrop-blur-sm">
+          <div className="flex border border-zinc-800 rounded-2xl overflow-hidden bg-zinc-950 select-none text-xs font-black uppercase tracking-wider p-0.5 w-full sm:w-auto">
+            <button
+              onClick={() => setActiveTab("Photo")}
+              className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl transition-all cursor-pointer text-center ${
+                activeTab === "Photo"
+                  ? "bg-orange-500 text-white font-black"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              Photos
+            </button>
+            <button
+              onClick={() => setActiveTab("Video")}
+              className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl transition-all cursor-pointer text-center ${
+                activeTab === "Video"
+                  ? "bg-orange-500 text-white font-black"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+            >
+              Videos
+            </button>
+          </div>
+
+          <div className="relative w-full sm:w-72">
+            <input
+              type="text"
+              placeholder={`Search ${activeTab.toLowerCase()}s by title or tag...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-semibold text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 transition-all"
+            />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600">
+              <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+            </svg>
+          </div>
         </div>
 
-        {/* Media Listings Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredItems.length > 0 ? (
-            filteredItems.map((item, idx) => (
+        {/* Media Grid */}
+        {isLoading ? (
+          <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-500">
+            <div className="h-7 w-7 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-bold uppercase tracking-widest">Loading Media...</span>
+          </div>
+        ) : mediaItems.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {mediaItems.map((item, idx) => (
               <div
                 key={item.id}
                 className="relative group bg-zinc-900 border border-zinc-800 rounded-3xl p-4 transition-all duration-300 hover:-translate-y-1 hover:border-orange-500/30 hover:shadow-xl hover:shadow-orange-500/5 flex flex-col justify-between overflow-hidden"
                 style={{ animationDelay: `${idx * 40}ms` }}
               >
                 <div>
+                  {/* Media Preview Box */}
                   <div className="relative h-44 w-full rounded-2xl bg-zinc-950 overflow-hidden border border-zinc-800/80 mb-4 shrink-0 flex items-center justify-center">
                     {item.type === "Photo" ? (
                       <img
-                        src={item.image}
+                        src={item.url}
                         alt={item.title}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="relative h-full w-full bg-zinc-950 flex items-center justify-center">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10" />
-                        <div className="h-11 w-11 rounded-full bg-orange-500/90 text-white flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:scale-110 transition-transform duration-300 z-20">
+                      /* Clean Watermark-Free Direct Video Card */
+                      <div
+                        onClick={() => setActiveVideoToPlay(item)}
+                        className="relative h-full w-full bg-zinc-950 flex items-center justify-center cursor-pointer group/video"
+                      >
+                        <video
+                          src={item.url}
+                          preload="metadata"
+                          muted
+                          playsInline
+                          className="h-full w-full object-cover opacity-80 group-hover/video:opacity-100 transition-opacity"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                        
+                        {/* Play button overlay */}
+                        <div className="absolute h-12 w-12 rounded-full bg-orange-500/90 text-white flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover/video:scale-110 transition-transform duration-300">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 ml-0.5">
                             <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
                           </svg>
                         </div>
-                        <span className="absolute top-2.5 left-2.5 z-20 inline-flex px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-widest bg-zinc-950/80 backdrop-blur-md text-orange-500 border border-orange-500/20">
-                          {item.videoPlatform}
+
+                        <span className="absolute bottom-2.5 left-2.5 text-[8px] font-black uppercase tracking-widest text-zinc-300 bg-black/60 px-2 py-0.5 rounded-md backdrop-blur-sm">
+                          Direct Video
                         </span>
                       </div>
                     )}
 
-                    {item.type === "Photo" && (
+                    {/* Tag badge */}
+                    {item.tags && item.tags.length > 0 && (
                       <span className="absolute top-2.5 left-2.5 inline-flex px-2 py-0.5 rounded-full text-[8px] uppercase font-black tracking-widest bg-zinc-950/80 backdrop-blur-md text-orange-500 border border-orange-500/20">
                         {item.tags[0]}
                       </span>
@@ -250,7 +264,11 @@ export default function AdminMediaPage() {
 
                   <div className="space-y-1.5">
                     <span className="text-[9px] text-zinc-500 font-bold uppercase select-none tracking-wider block">
-                      {item.date}
+                      {new Date(item.createdAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
                     </span>
                     <h3 className="text-xs font-black uppercase tracking-wide text-white group-hover:text-orange-400 transition-colors truncate">
                       {item.title}
@@ -263,26 +281,15 @@ export default function AdminMediaPage() {
 
                 <div className="mt-4 pt-3 border-t border-zinc-800/80 flex items-center justify-between gap-3 shrink-0">
                   <div className="flex gap-1 overflow-x-auto scrollbar-hide py-0.5">
-                    {item.type === "Video" ? (
-                      item.tags.map((tag) => (
-                        <span key={tag} className="inline-block text-[8px] uppercase font-bold text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded-md border border-zinc-800/60 shrink-0">
-                          #{tag}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="inline-block text-[8px] uppercase font-bold text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded-md border border-zinc-800/60">
-                        #{item.tags[0]}
+                    {item.tags && item.tags.map((tag) => (
+                      <span key={tag} className="inline-block text-[8px] uppercase font-bold text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded-md border border-zinc-800/60 shrink-0">
+                        #{tag}
                       </span>
-                    )}
+                    ))}
                   </div>
 
                   <button
-                    onClick={() => {
-                      if (confirm(`Are you sure you want to delete this media item: ${item.title}?`)) {
-                        setMediaItems((prev) => prev.filter((med) => med.id !== item.id));
-                        showSuccessToast("Media Deleted", `"${item.title}" successfully removed from gallery.`);
-                      }
-                    }}
+                    onClick={() => handleDeleteMedia(item)}
                     className="p-1.5 bg-zinc-950 border border-zinc-800 hover:border-red-500/20 hover:bg-red-500/5 rounded-xl text-zinc-500 hover:text-red-400 transition-all cursor-pointer shrink-0"
                     title="Remove Media"
                   >
@@ -292,28 +299,89 @@ export default function AdminMediaPage() {
                   </button>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="col-span-full py-16 text-center text-zinc-500 font-bold tracking-wide">
-              No media uploads found in this category.
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="col-span-full py-16 text-center text-zinc-500 font-bold tracking-wide bg-zinc-900/30 rounded-3xl border border-zinc-900">
+            <p className="text-sm text-zinc-400 font-black uppercase tracking-wider mb-1">
+              No {activeTab.toLowerCase()} uploads in database yet.
+            </p>
+            <p className="text-xs text-zinc-600 font-semibold">
+              Click &quot;Add New {activeTab}&quot; to upload your first {activeTab.toLowerCase()} asset to MinIO storage.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
-      {/* ADD MEDIA MODAL (Outside the animated parent wrapper to escape clipping context) */}
+      {/* DIRECT INLINE VIDEO PLAYER MODAL (Watermark-Free, Plays In-Page Directly) */}
       {/* ========================================================================= */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+      {activeVideoToPlay && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+          <div className="relative w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl animate-fade-in-up">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900/50">
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                  {activeVideoToPlay.title}
+                </h3>
+                <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">
+                  {activeVideoToPlay.shortDesc}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveVideoToPlay(null)}
+                className="h-8 w-8 flex items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4.5 w-4.5">
+                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Native HTML5 Video Player - Zero Watermark, Zero Third-Party Branding */}
+            <div className="relative aspect-video w-full bg-black flex items-center justify-center">
+              <video
+                src={activeVideoToPlay.url}
+                controls
+                autoPlay
+                playsInline
+                className="h-full w-full object-contain"
+              />
+            </div>
+
+            {/* Video Footer Info */}
+            <div className="p-4 bg-zinc-900/40 border-t border-zinc-800 flex items-center justify-between">
+              <div className="flex gap-1.5">
+                {activeVideoToPlay.tags && activeVideoToPlay.tags.map((tag) => (
+                  <span key={tag} className="text-[9px] uppercase font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 px-2 py-0.5 rounded-md">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+              <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">
+                Direct In-Website Player
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* UPLOAD MEDIA MODAL (Uploads to MinIO S3 Object Storage)                  */}
+      {/* ========================================================================= */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
           <form
             onSubmit={handleAddMediaSubmit}
-            className="my-auto mx-auto relative w-full max-w-md bg-zinc-900 border border-zinc-800/80 rounded-3xl p-6 md:p-8 shadow-2xl shadow-[0_0_50px_rgba(249,115,22,0.15)] flex flex-col gap-5"
+            className="my-auto mx-auto relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-800/80 rounded-3xl p-5 sm:p-6 md:p-8 shadow-2xl shadow-[0_0_50px_rgba(249,115,22,0.15)] flex flex-col gap-4 sm:gap-5 animate-fade-in-up"
           >
             {/* Modal Close */}
             <button
               type="button"
               onClick={handleCloseModal}
+              disabled={isSubmitting}
               className="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer select-none"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4.5 w-4.5">
@@ -324,10 +392,10 @@ export default function AdminMediaPage() {
             {/* Modal Title */}
             <div className="border-b border-zinc-800 pb-3 select-none">
               <h3 className="text-sm font-black uppercase text-white tracking-wider">
-                Upload Media Item
+                Upload New {mediaType}
               </h3>
               <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">
-                Append a new photo highlight or video short to the public gallery
+                Save directly to MinIO storage for watermark-free showcase
               </p>
             </div>
 
@@ -337,11 +405,15 @@ export default function AdminMediaPage() {
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block mb-1">Media Type</label>
                 <div className="flex border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950 select-none text-[10px] font-black uppercase tracking-wider p-0.5 w-full">
-                  {["Photo", "Video"].map((type) => (
+                  {(["Photo", "Video"] as const).map((type) => (
                     <button
                       key={type}
                       type="button"
-                      onClick={() => setMediaType(type as any)}
+                      onClick={() => {
+                        setMediaType(type);
+                        setSelectedFile(null);
+                        setFilePreview("");
+                      }}
                       className={`flex-1 py-2 rounded-lg transition-all cursor-pointer text-center ${
                         mediaType === type
                           ? "bg-orange-500 text-white font-black"
@@ -356,14 +428,14 @@ export default function AdminMediaPage() {
 
               {/* Title Input */}
               <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block mb-1">Media Title</label>
+                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block mb-1">Title</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Festival Light Sequence"
+                  placeholder={`e.g. ${mediaType === "Video" ? "Aerial Fireworks Finale Display" : "Diwali Sparklers Close-Up"}`}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3.5 py-3 bg-zinc-950 border border-zinc-800 focus:border-orange-500/50 rounded-xl text-xs font-semibold text-white placeholder-zinc-500 focus:outline-none transition-all font-semibold"
+                  className="w-full px-3.5 py-3 bg-zinc-950 border border-zinc-800 focus:border-orange-500/50 rounded-xl text-xs font-semibold text-white placeholder-zinc-500 focus:outline-none transition-all"
                 />
               </div>
 
@@ -373,115 +445,62 @@ export default function AdminMediaPage() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Slow motion capture of sparkling effects."
+                  placeholder="e.g. High altitude sparkling shells bursting over Sivakasi."
                   value={shortDesc}
                   onChange={(e) => setShortDesc(e.target.value)}
                   className="w-full px-3.5 py-3 bg-zinc-950 border border-zinc-800 focus:border-orange-500/50 rounded-xl text-xs font-semibold text-white placeholder-zinc-500 focus:outline-none transition-all"
                 />
               </div>
 
-              {/* DYNAMIC FIELDS FOR VIDEO */}
-              {mediaType === "Video" && (
-                <div className="space-y-4">
-                  {/* Platform Selector */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block mb-1">Social Video Platform</label>
-                    <div className="relative">
-                      <select
-                        value={videoPlatform}
-                        onChange={(e) => setVideoPlatform(e.target.value as any)}
-                        className="w-full px-3.5 py-3 bg-zinc-950 border border-zinc-800 focus:border-orange-500/50 rounded-xl text-xs text-white focus:outline-none transition-all cursor-pointer font-semibold appearance-none"
-                      >
-                        <option value="Instagram Reels" className="bg-zinc-950 text-white">Instagram Reels</option>
-                        <option value="Youtube Shorts" className="bg-zinc-950 text-white">Youtube Shorts</option>
-                      </select>
-                      {/* Custom dropdown arrow */}
-                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
+              {/* Tags Input */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block mb-1">
+                  Tags (Comma-Separated)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sparklers, Aerial, Sivakasi"
+                  value={tagsInput}
+                  onChange={(e) => setTagsInput(e.target.value)}
+                  className="w-full px-3.5 py-3 bg-zinc-950 border border-zinc-800 focus:border-orange-500/50 rounded-xl text-xs font-semibold text-white placeholder-zinc-500 focus:outline-none transition-all"
+                />
+              </div>
 
-                  {/* Video Link */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block mb-1">Video Link / URL</label>
-                    <input
-                      type="url"
-                      required
-                      placeholder="e.g. https://www.instagram.com/reel/abc"
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      className="w-full px-3.5 py-3 bg-zinc-950 border border-zinc-800 focus:border-orange-500/50 rounded-xl text-xs font-semibold text-white placeholder-zinc-500 focus:outline-none transition-all"
-                    />
-                  </div>
-
-                  {/* Video Tags */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block mb-1">Video Tags (Comma-Separated)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Diwali, Sparklers, Safety, Show"
-                      value={tagsInput}
-                      onChange={(e) => setTagsInput(e.target.value)}
-                      className="w-full px-3.5 py-3 bg-zinc-950 border border-zinc-800 focus:border-orange-500/50 rounded-xl text-xs font-semibold text-white placeholder-zinc-500 focus:outline-none transition-all"
-                    />
-                    <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-wider block mt-1 select-none">Separate multiple tags with a comma</span>
-                  </div>
+              {/* File Upload Section */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block mb-1">
+                  {mediaType === "Video" ? "Video File (.mp4, .webm, .mov)" : "Image File (.png, .jpg, .webp)"}
+                </label>
+                <div className="relative border border-dashed border-zinc-800 hover:border-orange-500/30 rounded-xl p-4 bg-zinc-950 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 min-h-[80px]">
+                  <input
+                    type="file"
+                    accept={mediaType === "Video" ? "video/mp4,video/webm,video/ogg,video/quicktime" : "image/*"}
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 text-orange-500">
+                    <path d="M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 101.09 1.03L9.25 4.636v8.614z" />
+                    <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+                  </svg>
+                  <span className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">
+                    {selectedFile ? selectedFile.name : `Select ${mediaType} from Computer`}
+                  </span>
+                  <span className="text-[8px] text-zinc-600 font-semibold">
+                    Saved directly into MinIO storage
+                  </span>
                 </div>
-              )}
 
-              {/* DYNAMIC FIELDS FOR PHOTO */}
-              {mediaType === "Photo" && (
-                <div className="space-y-4">
-                  {/* Photo Tags */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block mb-1">Single Tag</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Sparklers"
-                      value={tagsInput}
-                      onChange={(e) => setTagsInput(e.target.value)}
-                      className="w-full px-3.5 py-3 bg-zinc-950 border border-zinc-800 focus:border-orange-500/50 rounded-xl text-xs font-semibold text-white placeholder-zinc-500 focus:outline-none transition-all"
-                    />
+                {/* Preview Box */}
+                {filePreview && (
+                  <div className="mt-2 relative rounded-xl bg-zinc-950 border border-zinc-800 overflow-hidden flex items-center justify-center max-h-36">
+                    {mediaType === "Photo" ? (
+                      <img src={filePreview} alt="Preview" className="h-36 w-full object-cover" />
+                    ) : (
+                      <video src={filePreview} controls muted className="h-36 w-full object-contain" />
+                    )}
                   </div>
-
-                  {/* Photo File upload */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500 block mb-1">Media Image File</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
-                      <div className="sm:col-span-2 relative border border-dashed border-zinc-800 hover:border-orange-500/30 rounded-xl p-4 bg-zinc-950 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 min-h-[72px]">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePhotoFileChange}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 text-zinc-500">
-                          <path d="M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 101.09 1.03L9.25 4.636v8.614z" />
-                          <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
-                        </svg>
-                        <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Select Image File</span>
-                      </div>
-                      
-                      {/* Preview thumbnail */}
-                      <div className="relative h-[72px] w-full rounded-xl bg-zinc-950 overflow-hidden border border-zinc-800 flex items-center justify-center">
-                        {photoPreview ? (
-                          <img
-                            src={photoPreview}
-                            alt="Preview"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-[8px] text-zinc-650 font-bold uppercase tracking-widest text-center px-1">No Image</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Actions */}
@@ -489,15 +508,20 @@ export default function AdminMediaPage() {
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="py-2.5 px-5 bg-zinc-850 hover:bg-zinc-800 border border-zinc-800 text-xs font-black uppercase text-zinc-300 hover:text-white rounded-xl transition-all cursor-pointer"
+                disabled={isSubmitting}
+                className="py-2.5 px-5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-black uppercase text-zinc-300 hover:text-white rounded-xl transition-all cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="py-2.5 px-5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-xs font-black uppercase tracking-widest text-white rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
+                disabled={isSubmitting}
+                className="py-2.5 px-5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-xs font-black uppercase tracking-widest text-white rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer disabled:opacity-50 flex items-center gap-2"
               >
-                Save Media
+                {isSubmitting && (
+                  <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                <span>{isSubmitting ? "Uploading..." : `Save ${mediaType}`}</span>
               </button>
             </div>
           </form>

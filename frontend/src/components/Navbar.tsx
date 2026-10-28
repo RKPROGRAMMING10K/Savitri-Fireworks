@@ -97,31 +97,19 @@ export default function Navbar() {
           <div className="flex h-16 items-center justify-between">
             {/* Logo Section */}
             <div className="flex-shrink-0">
-              <Link href="/" className="flex items-center gap-2 group">
-                {/* Firework Logo Icon */}
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 text-white shadow-md transition-transform group-hover:scale-110 group-hover:rotate-12">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5 animate-pulse"
-                  >
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                  </svg>
-                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                  </span>
+              <Link href="/" className="flex items-center gap-3 group">
+                <div className="relative flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full overflow-hidden transition-transform duration-300 group-hover:scale-105 drop-shadow-sm">
+                  <img
+                    src="/assets/logo.png"
+                    alt="Savitri Fireworks"
+                    className="h-full w-full object-contain"
+                  />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-md font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-zinc-900 to-zinc-700 dark:from-white dark:to-zinc-300 font-sans leading-none">
+                  <span className="text-base font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-zinc-900 to-zinc-700 dark:from-white dark:to-zinc-300 font-sans leading-tight">
                     SAVITRI
                   </span>
-                  <span className="text-[10px] font-bold tracking-widest text-orange-500 font-sans uppercase leading-none mt-0.5">
+                  <span className="text-[10px] font-bold tracking-widest text-orange-500 font-sans uppercase leading-none">
                     FIREWORKS
                   </span>
                 </div>

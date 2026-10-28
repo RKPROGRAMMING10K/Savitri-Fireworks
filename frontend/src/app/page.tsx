@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import FireworksCanvas from "@/components/FireworksCanvas";
 import ProductCard from "@/components/ProductCard";
@@ -8,100 +8,47 @@ import FeaturedCard from "@/components/FeaturedCard";
 import PopularProductCard from "@/components/PopularProductCard";
 import TypingFireQuote from "@/components/TypingFireQuote";
 import Footer from "@/components/Footer";
+import { productService } from "@/services/products/productService";
+import { ProductDto } from "@/services/products/dto/product.dto";
 
 export default function Home() {
   const sliderRef = useRef<HTMLDivElement>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
+  // Dynamic live products state - ZERO mock data
+  const [products, setProducts] = useState<ProductDto[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadProducts() {
+      setIsLoading(true);
+      try {
+        const res = await productService.getProducts({ limit: 50 });
+        if (isMounted) {
+          setProducts(res.items || []);
+        }
+      } catch (err) {
+        console.error("Failed to load products for home page:", err);
+        if (isMounted) {
+          setProducts([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadProducts();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const toggleFaq = (idx: number) => {
     setOpenFaqIndex((prev) => (prev === idx ? null : idx));
   };
-
-  const products = [
-    {
-      name: "Children Fancy Fireworks",
-      image: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=600&auto=format&fit=crop",
-      desc: "Colorful, low-sound sparklers and fancy crackers made safe for children.",
-    },
-    {
-      name: "Unique Aerial Fireworks",
-      image: "https://images.unsplash.com/photo-1498855926480-d98e83099315?q=80&w=600&auto=format&fit=crop",
-      desc: "Spectacular multi-shot shell displays that paint the night sky in vibrant colors.",
-    },
-    {
-      name: "Traditional Fireworks",
-      image: "https://images.unsplash.com/photo-1533230898524-651547ec48f1?q=80&w=600&auto=format&fit=crop",
-      desc: "Time-honored crackers, roll caps, and classic sparklers for festivals.",
-    },
-    {
-      name: "Fountains",
-      image: "https://images.unsplash.com/photo-1507502707541-f369a3b18502?q=80&w=600&auto=format&fit=crop",
-      desc: "Stunning volcanic shower eruptions of glowing gold and silver sparkles.",
-    },
-    {
-      name: "Sparklers",
-      image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=600&auto=format&fit=crop",
-      desc: "Elegant hand-held wire sparklers casting safe, beautiful sparks.",
-    },
-    {
-      name: "Elite Fireworks",
-      image: "https://images.unsplash.com/photo-1531685250784-7569952593d2?q=80&w=600&auto=format&fit=crop",
-      desc: "Premium selection of high-altitude display shells and mega cakes.",
-    },
-    {
-      name: "Bombs",
-      image: "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?q=80&w=600&auto=format&fit=crop",
-      desc: "Loud sound, high-impact crackers for traditional celebrations.",
-    },
-    {
-      name: "Rocket Crackers",
-      image: "https://images.unsplash.com/photo-1536746803623-cef87080bfc8?q=80&w=600&auto=format&fit=crop",
-      desc: "High-flying rockets that soar into the heavens and burst into stars.",
-    },
-    {
-      name: "Ground Chakkras",
-      image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=600&auto=format&fit=crop",
-      desc: "Whirling ground spinners releasing brilliant circular patterns of light.",
-    },
-    {
-      name: "Flower Pots",
-      image: "https://images.unsplash.com/photo-1531685250784-7569952593d2?q=80&w=600&auto=format&fit=crop",
-      desc: "Cone-shaped fountains emitting cascading showers of sparks.",
-    },
-  ];
-
-  const popularProducts = [
-    {
-      name: "Mega Sky Cake - 120 Shots",
-      image: "https://images.unsplash.com/photo-1536746803623-cef87080bfc8?q=80&w=600&auto=format&fit=crop",
-      desc: "Vibrant high-altitude multi-shot display shell that covers the sky with sparkling stars.",
-    },
-    {
-      name: "Golden Peacock Fountain",
-      image: "https://images.unsplash.com/photo-1507502707541-f369a3b18502?q=80&w=600&auto=format&fit=crop",
-      desc: "Dense shower of golden volcanic sparks shooting up to 10 feet high.",
-    },
-    {
-      name: "Neon Multi-Color Sparklers",
-      image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=600&auto=format&fit=crop",
-      desc: "Premium extra-long burning sparklers casting vibrant red, green, and blue sparks.",
-    },
-    {
-      name: "Whistling Wheel Chakra",
-      image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=600&auto=format&fit=crop",
-      desc: "Fast ground spinner releasing concentric circles of light with a sharp whistling tune.",
-    },
-    {
-      name: "Musical Sky Rocket",
-      image: "https://images.unsplash.com/photo-1498855926480-d98e83099315?q=80&w=600&auto=format&fit=crop",
-      desc: "High soaring rocket that whistles on ascent and explodes into musical report bursts.",
-    },
-    {
-      name: "Diwali Special Assortment",
-      image: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=600&auto=format&fit=crop",
-      desc: "Curated premium box containing 25 varieties of sparkles, fountains, and ground chakras.",
-    },
-  ];
 
   const testimonials = [
     {
@@ -284,28 +231,79 @@ export default function Home() {
           <div className="absolute top-0 bottom-0 left-0 w-16 md:w-48 bg-gradient-to-r from-zinc-50 dark:from-black to-transparent z-20 pointer-events-none transition-all duration-300" />
           <div className="absolute top-0 bottom-0 right-0 w-16 md:w-48 bg-gradient-to-l from-zinc-50 dark:from-black to-transparent z-20 pointer-events-none transition-all duration-300" />
 
-          <div className="marquee-container">
-            <div className="marquee-content">
-              {/* Render the original products list */}
-              {products.map((p, idx) => (
-                <ProductCard
-                  key={`orig-${idx}`}
-                  name={p.name}
-                  image={p.image}
-                  desc={p.desc}
-                />
-              ))}
-              {/* Render the duplicated products list for infinite scrolling */}
-              {products.map((p, idx) => (
-                <ProductCard
-                  key={`dup-${idx}`}
-                  name={p.name}
-                  image={p.image}
-                  desc={p.desc}
-                />
+          {isLoading ? (
+            <div className="flex gap-6 justify-center items-center px-4 overflow-x-hidden">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <div
+                  key={s}
+                  className="flex-shrink-0 w-72 h-96 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-200/40 dark:bg-zinc-900/40 animate-pulse flex flex-col justify-end p-6"
+                >
+                  <div className="h-4 w-20 bg-zinc-300 dark:bg-zinc-800 rounded mb-2" />
+                  <div className="h-6 w-48 bg-zinc-300 dark:bg-zinc-800 rounded mb-3" />
+                  <div className="h-3 w-full bg-zinc-300 dark:bg-zinc-800 rounded" />
+                </div>
               ))}
             </div>
-          </div>
+          ) : products.length === 0 ? (
+            <div className="max-w-2xl mx-auto px-4 py-12 text-center bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md rounded-3xl border border-zinc-200/80 dark:border-white/10 shadow-lg relative z-30">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-500 mb-4 border border-orange-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="h-6 w-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 006.1 2.323z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-extrabold text-zinc-900 dark:text-white mb-2">
+                Catalog Being Updated
+              </h3>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-md mx-auto mb-6 font-medium">
+                Our latest pyrotechnic collections are being cataloged for the season. Explore our categories or get in touch for custom festive requirements.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Link
+                  href="/products"
+                  className="px-6 py-2.5 rounded-full text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 transition-all shadow-md hover:scale-105 active:scale-95"
+                >
+                  View All Products
+                </Link>
+                <Link
+                  href="/enquiry"
+                  className="px-6 py-2.5 rounded-full text-xs font-bold text-zinc-800 dark:text-white bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all border border-zinc-200 dark:border-white/10 hover:scale-105 active:scale-95"
+                >
+                  Contact For Orders
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="marquee-container">
+              <div className="marquee-content">
+                {Array.from({ length: Math.ceil(8 / products.length) }, () => products)
+                  .flat()
+                  .map((p, idx) => (
+                    <ProductCard
+                      key={`orig-${p.id}-${idx}`}
+                      name={p.name}
+                      image={p.image}
+                      desc={p.shortDesc || p.description}
+                      code={p.code}
+                      categoryName={p.category?.name}
+                      href={`/products?search=${encodeURIComponent(p.name)}`}
+                    />
+                  ))}
+                {Array.from({ length: Math.ceil(8 / products.length) }, () => products)
+                  .flat()
+                  .map((p, idx) => (
+                    <ProductCard
+                      key={`dup-${p.id}-${idx}`}
+                      name={p.name}
+                      image={p.image}
+                      desc={p.shortDesc || p.description}
+                      code={p.code}
+                      categoryName={p.category?.name}
+                      href={`/products?search=${encodeURIComponent(p.name)}`}
+                    />
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -414,21 +412,68 @@ export default function Home() {
               <div className="absolute top-0 bottom-0 left-0 w-8 md:w-24 bg-gradient-to-r from-white/70 dark:from-zinc-900/30 to-transparent z-20 pointer-events-none transition-all duration-300" />
               <div className="absolute top-0 bottom-0 right-0 w-8 md:w-24 bg-gradient-to-l from-white/70 dark:from-zinc-900/30 to-transparent z-20 pointer-events-none transition-all duration-300" />
 
-              <div
-                ref={sliderRef}
-                className="flex gap-6 overflow-x-auto scrollbar-hide py-4 px-2 scroll-smooth"
-              >
-                {popularProducts.map((p, idx) => (
-                  <PopularProductCard
-                    key={`pop-${idx}`}
-                    name={p.name}
-                    image={p.image}
-                    desc={p.desc}
-                    tag={idx === 0 || idx === 4 ? "Bestseller" : idx === 1 ? "Hot Deal" : "New launch"}
-                    rating={idx === 2 ? 4 : 5}
-                  />
-                ))}
-              </div>
+              {isLoading ? (
+                <div ref={sliderRef} className="flex gap-6 overflow-x-auto scrollbar-hide py-4 px-2">
+                  {[1, 2, 3].map((s) => (
+                    <div
+                      key={s}
+                      className="flex-shrink-0 w-80 h-[28rem] rounded-3xl border border-zinc-200/80 dark:border-white/10 bg-white/50 dark:bg-zinc-950/50 animate-pulse p-6 flex flex-col justify-between"
+                    >
+                      <div className="h-52 w-full bg-zinc-200 dark:bg-zinc-800 rounded-2xl" />
+                      <div className="space-y-3 mt-4">
+                        <div className="h-4 w-24 bg-zinc-200 dark:bg-zinc-800 rounded" />
+                        <div className="h-6 w-48 bg-zinc-200 dark:bg-zinc-800 rounded" />
+                        <div className="h-3 w-full bg-zinc-200 dark:bg-zinc-800 rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : products.length === 0 ? (
+                <div className="text-center py-12 px-4 max-w-lg mx-auto">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-500 mb-3 border border-orange-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="h-6 w-6">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.787 1.4 8.168L12 18.896l-7.334 3.859 1.4-8.168L.132 9.21l8.2-1.192L12 .587z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-extrabold text-zinc-900 dark:text-white mb-2">
+                    Customer Favorites Arriving Soon
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-5 leading-relaxed font-medium">
+                    Our top-rated celebration fireworks are being updated. Check our full inventory or request a product quote today.
+                  </p>
+                  <Link
+                    href="/products"
+                    className="inline-flex items-center gap-1.5 px-6 py-2.5 rounded-full text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 transition-all shadow-md hover:scale-105 active:scale-95"
+                  >
+                    Explore Catalog
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
+                      <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.63l-3.01-3.01a.75.75 0 111.06-1.06l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 11-1.06-1.06l3.01-3.01H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+                    </svg>
+                  </Link>
+                </div>
+              ) : (
+                <div
+                  ref={sliderRef}
+                  className="flex gap-6 overflow-x-auto scrollbar-hide py-4 px-2 scroll-smooth"
+                >
+                  {[...products]
+                    .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+                    .slice(0, 10)
+                    .map((p) => (
+                      <PopularProductCard
+                        key={`pop-${p.id}`}
+                        name={p.name}
+                        image={p.image}
+                        desc={p.shortDesc || p.description}
+                        tag={p.tag || (p.rating >= 5 ? "Bestseller" : "Popular")}
+                        rating={p.rating || 5}
+                        code={p.code}
+                        categoryName={p.category?.name}
+                        href={`/enquiry?product=${encodeURIComponent(p.name)}`}
+                      />
+                    ))}
+                </div>
+              )}
             </div>
 
           </div>

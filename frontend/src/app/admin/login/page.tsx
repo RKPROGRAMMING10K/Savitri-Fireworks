@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, FormEvent } from "react";
+import React, { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import LoginCanvas from "@/components/LoginCanvas";
 import { showSuccessToast, showErrorToast } from "@/utils/notifications";
+import { authService } from "@/services/auth/authService";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -12,11 +13,18 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // If session is already active, redirect directly to dashboard
+  useEffect(() => {
+    if (authService.isAuthenticated()) {
+      router.replace("/admin/dashboard");
+    }
+  }, [router]);
+
   const handleLoginSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Programmatically trigger a firework burst at the submit button's general coordinate
+    // Programmatically trigger firework burst at the submit button
     const rect = (e.target as HTMLFormElement)
       .querySelector("button[type='submit']")
       ?.getBoundingClientRect();
@@ -28,29 +36,36 @@ export default function AdminLoginPage() {
     });
     window.dispatchEvent(blastEvent);
 
-    // Mock authentication check
-    setTimeout(() => {
-      if (email === "admin@savitrifireworks.com" && password === "SavitriAdmin2026") {
-        showSuccessToast("Access Granted", "Welcome to Savitri Fireworks Control Panel.");
-        localStorage.setItem("admin_authenticated", "true");
-        // Redirect after a brief delay so the success message and sparks are visible
-        setTimeout(() => {
-          router.push("/admin/dashboard");
-        }, 1200);
-      } else {
-        showErrorToast("Access Denied", "Invalid administrative email or password.");
-        // Secondary failure sparks event
-        window.dispatchEvent(
-          new CustomEvent("trigger-login-firecracker", {
-            detail: {
-              x: window.innerWidth / 2 + (Math.random() - 0.5) * 150,
-              y: window.innerHeight / 2 - 100,
-            },
-          })
-        );
-      }
+    try {
+      const response = await authService.login({ email, password });
+
+      showSuccessToast(
+        "Access Granted",
+        `Welcome to Savitri Fireworks Control Panel, ${response.admin.name || "Super Admin"}.`
+      );
+
+      // Redirect after a brief moment so celebration sparks and toast are experienced
+      setTimeout(() => {
+        router.push("/admin/dashboard");
+      }, 1000);
+    } catch (error: any) {
+      showErrorToast(
+        "Access Denied",
+        error.message || "Invalid administrative email or password."
+      );
+
+      // Secondary failure sparks event
+      window.dispatchEvent(
+        new CustomEvent("trigger-login-firecracker", {
+          detail: {
+            x: window.innerWidth / 2 + (Math.random() - 0.5) * 150,
+            y: window.innerHeight / 2 - 100,
+          },
+        })
+      );
+    } finally {
       setIsLoading(false);
-    }, 1200);
+    }
   };
 
   return (
@@ -66,17 +81,12 @@ export default function AdminLoginPage() {
         <div className="relative bg-zinc-900/60 dark:bg-black/60 border border-white/10 dark:border-zinc-800/80 backdrop-blur-xl rounded-3xl p-8 md:p-10 shadow-2xl text-center">
           {/* Brand Logo & Title */}
           <div className="mb-8">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 text-white shadow-xl shadow-orange-500/20 mb-4 transition-transform hover:scale-105 active:scale-95 duration-300">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                className="h-7 w-7"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-              </svg>
+            <div className="inline-flex h-16 w-16 items-center justify-center rounded-full overflow-hidden mb-4 transition-transform hover:scale-105 active:scale-95 duration-300">
+              <img
+                src="/assets/logo.png"
+                alt="Savitri Fireworks Logo"
+                className="h-full w-full object-contain"
+              />
             </div>
             <h2 className="text-2xl font-black uppercase tracking-wider text-white">
               Savitri <span className="text-orange-500">Admin</span>
@@ -142,13 +152,11 @@ export default function AdminLoginPage() {
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-orange-500 transition-colors"
                 >
                   {showPassword ? (
-                    // Flame/spark visual toggle icon
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4.5 w-4.5">
                       <path d="M13.5 13a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" />
                       <path fillRule="evenodd" d="M10 17a6.97 6.97 0 0 0 4.95-2.05l-1.42-1.42a4.97 4.97 0 0 1-7.06 0l-1.42 1.42A6.97 6.97 0 0 0 10 17Z" clipRule="evenodd" />
                     </svg>
                   ) : (
-                    // Simple closed eye
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4.5 w-4.5">
                       <path d="M3.25 4.25a.75.75 0 0 1 1.06 0l11.5 11.5a.75.75 0 1 1-1.06 1.06l-11.5-11.5a.75.75 0 0 1 0-1.06Z" />
                       <path d="M12.44 11.38a3.5 3.5 0 0 1-4.82-4.82l-1.54-1.54a5.5 5.5 0 0 0 7.9 7.9l-1.54-1.54Z" />
@@ -158,14 +166,13 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
-
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
               className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:from-amber-600 hover:to-red-600 disabled:opacity-50 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all duration-300 shadow-lg shadow-orange-500/25 active:scale-95 cursor-pointer mt-2"
             >
-              {isLoading ? "Authenticating..." : "Secure Access"}
+              {isLoading ? "Authenticating with Server..." : "Secure Access"}
             </button>
           </form>
 
